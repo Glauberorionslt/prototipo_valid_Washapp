@@ -1,0 +1,98 @@
+LOGIN_01	Login com usuário e senha válidos
+LOGIN_03	Bloqueio após tentativas inválidas
+LOGIN_07	Campo chave/token primeiro acesso
+LOGIN_08	Validação chave ativa/inativa do usuario/meu cliente com sua atual sistuação de status de chave
+LOGIN_09	impossibilidar login se chave inativa
+LOGIN_10	Não solicitar chave após 2º login caso chave ativa
+LOGIN_12	cadastro de login e senha no primeiro acesso (usuário pode ser so com email)
+DASH_04	se clicar no item da lista dos status  abre edição seguindo as regras
+DASH_05	Bloqueio edição pronto editar somente para status "entregue
+DASH_06	Bloqueio edição p/ status entregue
+DASH_07	Botão nova ordem
+DASH_08	Botão clientes
+DASH_09	Botão produtos
+DASH_10	Botão financeiro
+DASH_11	Logout
+DASH_12	Envio WhatsApp (para itens da lista Pronto)
+CLI_01	Cadastro de cliente
+CLI_02	Campos obrigatórios
+CLI_03	Telefone numérico
+CLI_04	Limite caracteres
+CLI_05	Edição
+CLI_06	Exclusão
+CLI_07	Busca nome
+CLI_08	Busca pela placa
+CLI_09	Lista retrátil padrão de todas as telas já existente no frontend que iremos trabalhar
+CLI_10	Preenchimento automático
+CLI_11	Alerta sair sem salvar
+NOVA_ORDEM01	Selecionar cliente
+NOVA_ORDEM02	Busca nome
+NOVA_ORDEM03	Busca placa
+NOVA_ORDEM04	Cliente padrão
+NOVA_ORDEM05	Auto preenchimento caso já cadastrado
+NOVA_ORDEM06	Cadastro manual para cliente padrão do sistema
+NOVA_ORDEM07	Validação de campos obrigatórios
+NOVA_ORDEM08	Tipo lavagem
+NOVA_ORDEM09	Adicionar produtos opcional para salvar a O.L
+NOVA_ORDEM10	Cálculo total sera da soma dos campos do produtos/ serviços mais campo valor
+NOVA_ORDEM11	Salvar ordem
+NOVA_ORDEM12	Redirecionamento
+NOVA_ORDEM13	Alerta sair sem salvar
+NOVA_ORDEM14	WhatsApp opcional ao salvar uma nova ordem
+ORD_01	Visualização completa da ordem
+ORD_02	Alterar status conforme as regras
+ORD_03	o status pode ser trocado atraves dos status no list box
+ORD_05	Salvar alterações
+ORD_06	Opção de sair sem fazer nada
+ORD_07	Bloqueio edição para status entregue
+FIN_01	Filtro período
+FIN_02	Filtro status
+FIN_03	Faturamento
+FIN_04	Qtd ordens
+FIN_05	Card total
+FIN_07	Data em formato PT-BR
+FIN_08	Exportar relatorio p/ Excel
+FIN_09	Enviar WhatsApp
+FIN_10	Limite 100 linhas quando exportar para excel
+FIN_11	Lista retrátil padrão já existente no frontend sugerido no projeto
+PROD_01	Cadastro
+PROD_02	Edição
+PROD_03	Exclusão
+PROD_04	Busca/pesquisa
+ADM_01	Senha gerencial
+ADM_02	cadastro de uma nova senha/Recuperação senha (sistema deve avisar para que seja cadastrada a senha no primeiro acesso do usuário
+ADM_03	Validação com senha gerencial ações criticas
+ADM_SIST_01	listar usuarios vs chaves de acesso
+ADM_SIST_02	editar status de chave (manualmente pelo usuário master)
+ADM_SIST_03	criar chave (gerador de chaves)
+
+owner.smoke@example.com
+Owner123!
+
+master.licencas@example.com
+Master123!2026
+
+cliente_teste_1@email.com
+Clienteteste1@2907
+EUYWRQYROIQ-237
+
+cliente_teste_2@email.com
+Clienteteste22@2907
+SJKDHGSDH-475
+3322
+
+cliente_teste_3@email.com
+Clienteteste3@2907
+EITERITURIP-334
+5566
+
+cliente_teste_4@email.com
+Clienteteste4@2907
+
+
+comando para PARAR o backend
+
+Get-NetTCPConnection -LocalPort 8011 -State Listen
+Stop-Process -Id SEU_PID -Force
+Set-Location "c:\Users\Glauber Marques\OneDrive - UNIP\ONEDRIVE GLAUBER\PROJETOS\PYTHON\saas\prototipo_washapp_v2\backend"
+& "C:/Users/Glauber Marques/OneDrive - UNIP/ONEDRIVE GLAUBER/PROJETOS/PYTHON/saas/libs_saas/Scripts/python.exe" -m uvicorn app.main:app --host 0.0.0.0 --port 8011

@@ -1,0 +1,43 @@
+# Secrets and local env
+backend/.env
+wash-hub/.env
+*.env
+*.env.local
+*.local
+.dev.vars
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.tanstack/
+.vinxi/
+.nitro/
+.wrangler/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Unused local lockfile for this workspace flow
+wash-hub/bun.lockb
