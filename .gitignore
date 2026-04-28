@@ -25,6 +25,10 @@ dist-ssr/
 .nitro/
 .wrangler/
 
+# WhatsApp local session state
+whatsapp-bridge/.baileys-auth/
+whatsapp-bridge/.baileys-auth-backup-*/
+
 # Logs
 logs/
 *.log
@@ -41,3 +45,6 @@ Thumbs.db
 
 # Unused local lockfile for this workspace flow
 wash-hub/bun.lockb
+
+# Temporary backup created while flattening nested repositories
+wash-hub/.git_repo_backup/

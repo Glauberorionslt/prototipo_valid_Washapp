@@ -1,0 +1,182 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Ocean Detailing palette */
+  --background: oklch(0.985 0.012 220);
+  --foreground: oklch(0.18 0.04 230);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.04 230);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.04 230);
+
+  --primary: oklch(0.55 0.14 215);
+  --primary-foreground: oklch(0.99 0.005 220);
+  --primary-glow: oklch(0.72 0.13 195);
+
+  --secondary: oklch(0.95 0.025 210);
+  --secondary-foreground: oklch(0.25 0.06 230);
+
+  --muted: oklch(0.95 0.018 220);
+  --muted-foreground: oklch(0.5 0.04 230);
+
+  --accent: oklch(0.92 0.06 195);
+  --accent-foreground: oklch(0.22 0.07 220);
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.9 0.025 215);
+  --input: oklch(0.92 0.02 215);
+  --ring: oklch(0.6 0.14 210);
+
+  /* Status colors (Aguardando, Em Lavagem, Pronto, Entregue) */
+  --status-waiting: oklch(0.55 0.22 25);
+  --status-waiting-bg: oklch(0.55 0.22 25 / 0.10);
+  --status-washing: oklch(0.65 0.19 50);
+  --status-washing-bg: oklch(0.65 0.19 50 / 0.10);
+  --status-ready: oklch(0.62 0.18 150);
+  --status-ready-bg: oklch(0.62 0.18 150 / 0.10);
+  --status-delivered: oklch(0.58 0.13 215);
+  --status-delivered-bg: oklch(0.58 0.13 215 / 0.10);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.55 0.14 215), oklch(0.72 0.13 195));
+  --gradient-hero: linear-gradient(135deg, oklch(0.45 0.16 230) 0%, oklch(0.6 0.14 200) 50%, oklch(0.78 0.12 185) 100%);
+  --gradient-surface: linear-gradient(180deg, oklch(0.99 0.008 215), oklch(0.96 0.018 210));
+  --shadow-elegant: 0 10px 40px -10px oklch(0.45 0.16 220 / 0.25);
+  --shadow-glow: 0 0 60px oklch(0.72 0.13 195 / 0.35);
+  --shadow-soft: 0 4px 20px -4px oklch(0.45 0.16 220 / 0.12);
+
+  --chart-1: oklch(0.55 0.14 215);
+  --chart-2: oklch(0.72 0.13 195);
+  --chart-3: oklch(0.62 0.18 150);
+  --chart-4: oklch(0.65 0.19 50);
+  --chart-5: oklch(0.55 0.22 25);
+
+  --sidebar: oklch(0.22 0.06 230);
+  --sidebar-foreground: oklch(0.95 0.015 210);
+  --sidebar-primary: oklch(0.72 0.13 195);
+  --sidebar-primary-foreground: oklch(0.18 0.04 230);
+  --sidebar-accent: oklch(0.3 0.07 225);
+  --sidebar-accent-foreground: oklch(0.95 0.015 210);
+  --sidebar-border: oklch(0.3 0.05 225);
+  --sidebar-ring: oklch(0.72 0.13 195);
+
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  --background: oklch(0.18 0.04 230);
+  --foreground: oklch(0.96 0.012 215);
+  --card: oklch(0.24 0.05 230);
+  --card-foreground: oklch(0.96 0.012 215);
+  --popover: oklch(0.24 0.05 230);
+  --popover-foreground: oklch(0.96 0.012 215);
+  --primary: oklch(0.72 0.13 195);
+  --primary-foreground: oklch(0.18 0.04 230);
+  --secondary: oklch(0.3 0.06 225);
+  --secondary-foreground: oklch(0.96 0.012 215);
+  --muted: oklch(0.28 0.04 225);
+  --muted-foreground: oklch(0.7 0.03 215);
+  --accent: oklch(0.32 0.08 200);
+  --accent-foreground: oklch(0.96 0.012 215);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.72 0.13 195);
+}
+
+@layer utilities {
+  .glass {
+    background: color-mix(in oklab, var(--card) 70%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  }
+  .glass-dark {
+    background: color-mix(in oklab, var(--sidebar) 75%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .bg-gradient-primary { background: var(--gradient-primary); }
+  .bg-gradient-hero { background: var(--gradient-hero); }
+  .bg-gradient-surface { background: var(--gradient-surface); }
+  .shadow-elegant { box-shadow: var(--shadow-elegant); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .transition-smooth { transition: var(--transition-smooth); }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
