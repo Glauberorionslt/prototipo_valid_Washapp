@@ -42,8 +42,10 @@ def list_products(
 @router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
 def create_product(payload: ProductCreate, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> ProductOut:
     if user.company_id is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario sem empresa vinculada")
-    product = Product(company_id=user.company_id, name=payload.name.strip(), price=payload.price)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Usuario sem empresa vinculada")
+    product = Product(company_id=user.company_id,
+                      name=payload.name.strip(), price=payload.price)
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -57,9 +59,11 @@ def update_product(
     db: Session = Depends(get_db),
     user: object = Depends(require_manager_password),
 ) -> ProductOut:
-    product = db.scalar(select(Product).where(Product.id == product_id, Product.company_id == user.company_id))
+    product = db.scalar(select(Product).where(
+        Product.id == product_id, Product.company_id == user.company_id))
     if product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produto nao encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Produto nao encontrado")
     for field, value in payload.model_dump(exclude_unset=True).items():
         if field == "isActive":
             product.is_active = bool(value)
@@ -77,9 +81,11 @@ def delete_product(
     db: Session = Depends(get_db),
     user: object = Depends(require_manager_password),
 ) -> dict:
-    product = db.scalar(select(Product).where(Product.id == product_id, Product.company_id == user.company_id))
+    product = db.scalar(select(Product).where(
+        Product.id == product_id, Product.company_id == user.company_id))
     if product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produto nao encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Produto nao encontrado")
     db.delete(product)
     db.commit()
     return {"status": "deleted"}

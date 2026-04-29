@@ -18,7 +18,7 @@ const logger = pino({ level: 'info' })
 const app = express()
 const port = Number(process.env.PORT || 3100)
 const authDir = process.env.AUTH_DIR || '.baileys-auth'
-const linkMode = String(process.env.WA_LINK_MODE || 'pairing-code').toLowerCase()
+const linkMode = String(process.env.WA_LINK_MODE || 'qr').toLowerCase()
 
 app.use(cors())
 app.use(express.json())

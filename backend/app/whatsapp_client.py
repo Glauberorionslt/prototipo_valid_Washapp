@@ -35,7 +35,8 @@ def get_bridge_status() -> dict:
     if not bridge_enabled():
         return {"connected": False, "registered": False, "detail": "Bridge not configured"}
     try:
-        response = requests.get(_bridge_url("/session/status"), timeout=settings.whatsapp_timeout_seconds)
+        response = requests.get(_bridge_url(
+            "/session/status"), timeout=settings.whatsapp_timeout_seconds)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as exc:
@@ -46,7 +47,8 @@ def get_bridge_qr() -> dict:
     if not bridge_enabled():
         return {"ok": False, "detail": "Bridge not configured", "qr": None}
     try:
-        response = requests.get(_bridge_url("/session/qr"), timeout=settings.whatsapp_timeout_seconds)
+        response = requests.get(_bridge_url(
+            "/session/qr"), timeout=settings.whatsapp_timeout_seconds)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as exc:
@@ -57,7 +59,8 @@ def reset_bridge_session() -> dict:
     if not bridge_enabled():
         return {"ok": False, "detail": "Bridge not configured"}
     try:
-        response = requests.post(_bridge_url("/session/reset"), timeout=settings.whatsapp_timeout_seconds)
+        response = requests.post(_bridge_url(
+            "/session/reset"), timeout=settings.whatsapp_timeout_seconds)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as exc:

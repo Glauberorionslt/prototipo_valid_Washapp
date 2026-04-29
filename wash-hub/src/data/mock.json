@@ -16,33 +16,225 @@
     "ticketAvg": 71.4
   },
   "customers": [
-    { "id": 0, "name": "Avulso", "phone": "", "vehicle": "", "plate": "", "color": "", "isDefault": true },
-    { "id": 1, "name": "Mariana Souza", "phone": "(11) 98123-4501", "vehicle": "Honda Civic", "plate": "BRA2E19", "color": "Prata" },
-    { "id": 2, "name": "Roberto Lima", "phone": "(11) 99654-7723", "vehicle": "Jeep Compass", "plate": "RIO5K88", "color": "Branco" },
-    { "id": 3, "name": "Ana Beatriz", "phone": "(11) 97412-0098", "vehicle": "VW T-Cross", "plate": "SPA1B23", "color": "Vermelho" },
-    { "id": 4, "name": "Felipe Andrade", "phone": "(11) 98800-1122", "vehicle": "Toyota Corolla", "plate": "MGB7C45", "color": "Preto" },
-    { "id": 5, "name": "Juliana Pereira", "phone": "(11) 99001-5566", "vehicle": "Hyundai HB20", "plate": "PRC9D12", "color": "Azul" }
+    {
+      "id": 0,
+      "name": "Avulso",
+      "phone": "",
+      "vehicle": "",
+      "plate": "",
+      "color": "",
+      "isDefault": true
+    },
+    {
+      "id": 1,
+      "name": "Mariana Souza",
+      "phone": "(11) 98123-4501",
+      "vehicle": "Honda Civic",
+      "plate": "BRA2E19",
+      "color": "Prata"
+    },
+    {
+      "id": 2,
+      "name": "Roberto Lima",
+      "phone": "(11) 99654-7723",
+      "vehicle": "Jeep Compass",
+      "plate": "RIO5K88",
+      "color": "Branco"
+    },
+    {
+      "id": 3,
+      "name": "Ana Beatriz",
+      "phone": "(11) 97412-0098",
+      "vehicle": "VW T-Cross",
+      "plate": "SPA1B23",
+      "color": "Vermelho"
+    },
+    {
+      "id": 4,
+      "name": "Felipe Andrade",
+      "phone": "(11) 98800-1122",
+      "vehicle": "Toyota Corolla",
+      "plate": "MGB7C45",
+      "color": "Preto"
+    },
+    {
+      "id": 5,
+      "name": "Juliana Pereira",
+      "phone": "(11) 99001-5566",
+      "vehicle": "Hyundai HB20",
+      "plate": "PRC9D12",
+      "color": "Azul"
+    }
   ],
   "products": [
-    { "id": 1, "name": "Lavagem Simples", "price": 35.0 },
-    { "id": 2, "name": "Lavagem Completa", "price": 65.0 },
-    { "id": 3, "name": "Cera Premium", "price": 45.0 },
-    { "id": 4, "name": "Higienização Interna", "price": 120.0 },
-    { "id": 5, "name": "Polimento Técnico", "price": 220.0 },
-    { "id": 6, "name": "Cristalização de Vidros", "price": 180.0 },
-    { "id": 7, "name": "Aromatização", "price": 25.0 }
+    {
+      "id": 1,
+      "name": "Lavagem Simples",
+      "price": 35.0
+    },
+    {
+      "id": 2,
+      "name": "Lavagem Completa",
+      "price": 65.0
+    },
+    {
+      "id": 3,
+      "name": "Cera Premium",
+      "price": 45.0
+    },
+    {
+      "id": 4,
+      "name": "Higienização Interna",
+      "price": 120.0
+    },
+    {
+      "id": 5,
+      "name": "Polimento Técnico",
+      "price": 220.0
+    },
+    {
+      "id": 6,
+      "name": "Cristalização de Vidros",
+      "price": 180.0
+    },
+    {
+      "id": 7,
+      "name": "Aromatização",
+      "price": 25.0
+    }
   ],
   "orders": [
-    { "id": 1042, "customerName": "Mariana Souza", "phone": "(11) 98123-4501", "vehicle": "Honda Civic", "plate": "BRA2E19", "color": "Prata", "washType": "completa", "total": 110.0, "status": "aguardando", "createdAt": "2025-04-24T08:42:00" },
-    { "id": 1043, "customerName": "Roberto Lima", "phone": "(11) 99654-7723", "vehicle": "Jeep Compass", "plate": "RIO5K88", "color": "Branco", "washType": "completa", "total": 245.0, "status": "aguardando", "createdAt": "2025-04-24T09:05:00" },
-    { "id": 1044, "customerName": "Avulso", "phone": "(11) 91234-0000", "vehicle": "Fiat Argo", "plate": "FCA8H22", "color": "Cinza", "washType": "simples", "total": 35.0, "status": "aguardando", "createdAt": "2025-04-24T09:18:00" },
-    { "id": 1045, "customerName": "Ana Beatriz", "phone": "(11) 97412-0098", "vehicle": "VW T-Cross", "plate": "SPA1B23", "color": "Vermelho", "washType": "completa", "total": 130.0, "status": "aguardando", "createdAt": "2025-04-24T09:30:00" },
-    { "id": 1046, "customerName": "Felipe Andrade", "phone": "(11) 98800-1122", "vehicle": "Toyota Corolla", "plate": "MGB7C45", "color": "Preto", "washType": "completa", "total": 285.0, "status": "em_lavagem", "createdAt": "2025-04-24T08:10:00" },
-    { "id": 1047, "customerName": "Juliana Pereira", "phone": "(11) 99001-5566", "vehicle": "Hyundai HB20", "plate": "PRC9D12", "color": "Azul", "washType": "simples", "total": 60.0, "status": "em_lavagem", "createdAt": "2025-04-24T08:25:00" },
-    { "id": 1048, "customerName": "Avulso", "phone": "(11) 92211-3344", "vehicle": "Renault Kwid", "plate": "RNK3M77", "color": "Branco", "washType": "simples", "total": 35.0, "status": "em_lavagem", "createdAt": "2025-04-24T09:00:00" },
-    { "id": 1049, "customerName": "Mariana Souza", "phone": "(11) 98123-4501", "vehicle": "Honda Civic", "plate": "BRA2E19", "color": "Prata", "washType": "completa", "total": 155.0, "status": "pronto", "createdAt": "2025-04-24T07:30:00" },
-    { "id": 1050, "customerName": "Avulso", "phone": "(11) 93344-5566", "vehicle": "Chevrolet Onix", "plate": "ONX2P31", "color": "Vermelho", "washType": "completa", "total": 90.0, "status": "pronto", "createdAt": "2025-04-24T07:45:00" },
-    { "id": 1051, "customerName": "Roberto Lima", "phone": "(11) 99654-7723", "vehicle": "Jeep Compass", "plate": "RIO5K88", "color": "Branco", "washType": "completa", "total": 175.0, "status": "entregue", "createdAt": "2025-04-24T06:30:00" },
-    { "id": 1052, "customerName": "Felipe Andrade", "phone": "(11) 98800-1122", "vehicle": "Toyota Corolla", "plate": "MGB7C45", "color": "Preto", "washType": "simples", "total": 35.0, "status": "entregue", "createdAt": "2025-04-24T06:50:00" }
+    {
+      "id": 1042,
+      "customerName": "Mariana Souza",
+      "phone": "(11) 98123-4501",
+      "vehicle": "Honda Civic",
+      "plate": "BRA2E19",
+      "color": "Prata",
+      "washType": "completa",
+      "total": 110.0,
+      "status": "aguardando",
+      "createdAt": "2025-04-24T08:42:00"
+    },
+    {
+      "id": 1043,
+      "customerName": "Roberto Lima",
+      "phone": "(11) 99654-7723",
+      "vehicle": "Jeep Compass",
+      "plate": "RIO5K88",
+      "color": "Branco",
+      "washType": "completa",
+      "total": 245.0,
+      "status": "aguardando",
+      "createdAt": "2025-04-24T09:05:00"
+    },
+    {
+      "id": 1044,
+      "customerName": "Avulso",
+      "phone": "(11) 91234-0000",
+      "vehicle": "Fiat Argo",
+      "plate": "FCA8H22",
+      "color": "Cinza",
+      "washType": "simples",
+      "total": 35.0,
+      "status": "aguardando",
+      "createdAt": "2025-04-24T09:18:00"
+    },
+    {
+      "id": 1045,
+      "customerName": "Ana Beatriz",
+      "phone": "(11) 97412-0098",
+      "vehicle": "VW T-Cross",
+      "plate": "SPA1B23",
+      "color": "Vermelho",
+      "washType": "completa",
+      "total": 130.0,
+      "status": "aguardando",
+      "createdAt": "2025-04-24T09:30:00"
+    },
+    {
+      "id": 1046,
+      "customerName": "Felipe Andrade",
+      "phone": "(11) 98800-1122",
+      "vehicle": "Toyota Corolla",
+      "plate": "MGB7C45",
+      "color": "Preto",
+      "washType": "completa",
+      "total": 285.0,
+      "status": "em_lavagem",
+      "createdAt": "2025-04-24T08:10:00"
+    },
+    {
+      "id": 1047,
+      "customerName": "Juliana Pereira",
+      "phone": "(11) 99001-5566",
+      "vehicle": "Hyundai HB20",
+      "plate": "PRC9D12",
+      "color": "Azul",
+      "washType": "simples",
+      "total": 60.0,
+      "status": "em_lavagem",
+      "createdAt": "2025-04-24T08:25:00"
+    },
+    {
+      "id": 1048,
+      "customerName": "Avulso",
+      "phone": "(11) 92211-3344",
+      "vehicle": "Renault Kwid",
+      "plate": "RNK3M77",
+      "color": "Branco",
+      "washType": "simples",
+      "total": 35.0,
+      "status": "em_lavagem",
+      "createdAt": "2025-04-24T09:00:00"
+    },
+    {
+      "id": 1049,
+      "customerName": "Mariana Souza",
+      "phone": "(11) 98123-4501",
+      "vehicle": "Honda Civic",
+      "plate": "BRA2E19",
+      "color": "Prata",
+      "washType": "completa",
+      "total": 155.0,
+      "status": "pronto",
+      "createdAt": "2025-04-24T07:30:00"
+    },
+    {
+      "id": 1050,
+      "customerName": "Avulso",
+      "phone": "(11) 93344-5566",
+      "vehicle": "Chevrolet Onix",
+      "plate": "ONX2P31",
+      "color": "Vermelho",
+      "washType": "completa",
+      "total": 90.0,
+      "status": "pronto",
+      "createdAt": "2025-04-24T07:45:00"
+    },
+    {
+      "id": 1051,
+      "customerName": "Roberto Lima",
+      "phone": "(11) 99654-7723",
+      "vehicle": "Jeep Compass",
+      "plate": "RIO5K88",
+      "color": "Branco",
+      "washType": "completa",
+      "total": 175.0,
+      "status": "entregue",
+      "createdAt": "2025-04-24T06:30:00"
+    },
+    {
+      "id": 1052,
+      "customerName": "Felipe Andrade",
+      "phone": "(11) 98800-1122",
+      "vehicle": "Toyota Corolla",
+      "plate": "MGB7C45",
+      "color": "Preto",
+      "washType": "simples",
+      "total": 35.0,
+      "status": "entregue",
+      "createdAt": "2025-04-24T06:50:00"
+    }
   ]
 }

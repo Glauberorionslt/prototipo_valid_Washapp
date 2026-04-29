@@ -77,7 +77,7 @@ Clienteteste1@2907
 EUYWRQYROIQ-237
 
 cliente_teste_2@email.com
-Clienteteste22@2907
+Clienteteste2@2907
 SJKDHGSDH-475
 3322
 
@@ -88,6 +88,10 @@ EITERITURIP-334
 
 cliente_teste_4@email.com
 Clienteteste4@2907
+4422
+
+cliente_teste_5@email.com
+Clienteteste5@2907
 
 
 comando para PARAR o backend

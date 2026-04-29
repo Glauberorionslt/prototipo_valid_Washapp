@@ -13,9 +13,36 @@ import { useManagerPasswordDialog } from "@/components/app/ManagerPasswordDialog
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
+const FINANCE_FILTERS_STORAGE_KEY = "washapp2.finance.filters";
+
+function getDefaultFilters() {
+  return { start: "2025-04-01", end: "2025-04-24", status: "all" };
+}
+
+function readStoredFilters() {
+  if (typeof window === "undefined") {
+    return getDefaultFilters();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FINANCE_FILTERS_STORAGE_KEY);
+    if (!raw) {
+      return getDefaultFilters();
+    }
+    const parsed = JSON.parse(raw) as Partial<{ start: string; end: string; status: string }>;
+    return {
+      start: parsed.start || getDefaultFilters().start,
+      end: parsed.end || getDefaultFilters().end,
+      status: parsed.status || getDefaultFilters().status,
+    };
+  } catch {
+    return getDefaultFilters();
+  }
+}
+
 function Financeiro() {
   const { askManagerPassword, dialog } = useManagerPasswordDialog();
-  const [filters, setFilters] = useState({ start: "2025-04-01", end: "2025-04-24", status: "all" });
+  const [filters, setFilters] = useState(readStoredFilters);
   const [report, setReport] = useState<FinanceReport | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +59,13 @@ function Financeiro() {
   useEffect(() => {
     loadReport();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(FINANCE_FILTERS_STORAGE_KEY, JSON.stringify(filters));
+  }, [filters]);
 
   const finalizedCount = report?.summary.finalizedCount ?? 0;
   const total = report?.summary.totalAmount ?? 0;
@@ -176,7 +210,7 @@ function Financeiro() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-widest text-muted-foreground">Custo Operacional</p>
+                  <p className="text-sm uppercase tracking-widest text-muted-foreground">Lucro Operacional</p>
                   <p className="mt-2 text-2xl font-bold tracking-tight">R$ {(report?.summary.netOperationalTotal ?? 0).toFixed(2)}</p>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">

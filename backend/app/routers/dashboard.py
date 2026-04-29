@@ -96,19 +96,27 @@ def overview(user: User = Depends(get_current_user), db: Session = Depends(get_d
         products = []
         orders = []
     else:
-        customers = db.scalars(select(Customer).where(Customer.company_id == user.company_id).order_by(Customer.name)).all()
-        products = db.scalars(select(Product).where(Product.company_id == user.company_id, Product.is_active.is_(True)).order_by(Product.name)).all()
+        customers = db.scalars(select(Customer).where(
+            Customer.company_id == user.company_id).order_by(Customer.name)).all()
+        products = db.scalars(select(Product).where(
+            Product.company_id == user.company_id, Product.is_active.is_(True)).order_by(Product.name)).all()
         orders = db.scalars(
-            select(Order).where(Order.company_id == user.company_id).options(selectinload(Order.items)).order_by(Order.created_at.desc())
+            select(Order).where(Order.company_id == user.company_id).options(
+                selectinload(Order.items)).order_by(Order.created_at.desc())
         ).all()
 
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=6)
 
-    today_orders = [order for order in orders if _as_utc(order.created_at) >= today_start]
-    week_orders = [order for order in orders if _as_utc(order.created_at) >= week_start]
-    finalized_today = [o for o in today_orders if o.status in {"pronto", "entregue"}]
-    finalized_week = [o for o in week_orders if o.status in {"pronto", "entregue"}]
+    today_orders = [order for order in orders if _as_utc(
+        order.created_at) >= today_start]
+    week_orders = [order for order in orders if _as_utc(
+        order.created_at) >= week_start]
+    finalized_today = [
+        o for o in today_orders if o.status in {"pronto", "entregue"}]
+    finalized_week = [
+        o for o in week_orders if o.status in {"pronto", "entregue"}]
 
     stats = DashboardStatsOut(
         totalToday=len(today_orders),
@@ -119,7 +127,8 @@ def overview(user: User = Depends(get_current_user), db: Session = Depends(get_d
         revenueToday=round(sum(float(o.total) for o in finalized_today), 2),
         revenueWeek=round(sum(float(o.total) for o in finalized_week), 2),
         ticketAvg=round(
-            (sum(float(o.total) for o in finalized_week) / len(finalized_week)) if finalized_week else 0,
+            (sum(float(o.total) for o in finalized_week) /
+             len(finalized_week)) if finalized_week else 0,
             2,
         ),
     )

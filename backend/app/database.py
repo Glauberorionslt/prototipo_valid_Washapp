@@ -13,7 +13,8 @@ class Base(DeclarativeBase):
 
 
 engine = create_engine(settings.database_url, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+SessionLocal = sessionmaker(
+    bind=engine, autoflush=False, autocommit=False, future=True)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -63,14 +64,16 @@ def _apply_post_create_migrations() -> None:
         for statement in ddl_statements:
             connection.execute(text(statement))
 
-        company_row = connection.execute(text("SELECT id FROM companies ORDER BY id LIMIT 1")).first()
+        company_row = connection.execute(
+            text("SELECT id FROM companies ORDER BY id LIMIT 1")).first()
         if company_row is None:
             company_id = connection.execute(
                 text(
                     "INSERT INTO companies (name, slug, plan_name, created_at, updated_at) "
                     "VALUES (:name, :slug, :plan_name, NOW(), NOW()) RETURNING id"
                 ),
-                {"name": "Empresa Padrao", "slug": "empresa-padrao", "plan_name": "Pago"},
+                {"name": "Empresa Padrao",
+                    "slug": "empresa-padrao", "plan_name": "Pago"},
             ).scalar_one()
         else:
             company_id = int(company_row[0])
@@ -82,12 +85,20 @@ def _apply_post_create_migrations() -> None:
                 "WHERE contract_code IS NULL"
             )
         )
-        connection.execute(text("UPDATE companies SET contract_status = 'active' WHERE contract_status IS NULL"))
-        connection.execute(text("UPDATE users SET user_status = 'active' WHERE user_status IS NULL"))
+        connection.execute(text(
+            "UPDATE companies SET contract_status = 'active' WHERE contract_status IS NULL"))
+        connection.execute(
+            text("UPDATE users SET user_status = 'active' WHERE user_status IS NULL"))
 
-        connection.execute(text("UPDATE users SET company_id = :company_id WHERE company_id IS NULL"), {"company_id": company_id})
-        connection.execute(text("UPDATE customers SET company_id = :company_id WHERE company_id IS NULL"), {"company_id": company_id})
-        connection.execute(text("UPDATE products SET company_id = :company_id WHERE company_id IS NULL"), {"company_id": company_id})
-        connection.execute(text("UPDATE orders SET company_id = :company_id WHERE company_id IS NULL"), {"company_id": company_id})
-        connection.execute(text("UPDATE whatsapp_logs SET company_id = :company_id WHERE company_id IS NULL"), {"company_id": company_id})
-        connection.execute(text("UPDATE team_cost_entries SET tip_amount = 0 WHERE tip_amount IS NULL"))
+        connection.execute(text("UPDATE users SET company_id = :company_id WHERE company_id IS NULL"), {
+                           "company_id": company_id})
+        connection.execute(text("UPDATE customers SET company_id = :company_id WHERE company_id IS NULL"), {
+                           "company_id": company_id})
+        connection.execute(text("UPDATE products SET company_id = :company_id WHERE company_id IS NULL"), {
+                           "company_id": company_id})
+        connection.execute(text("UPDATE orders SET company_id = :company_id WHERE company_id IS NULL"), {
+                           "company_id": company_id})
+        connection.execute(text("UPDATE whatsapp_logs SET company_id = :company_id WHERE company_id IS NULL"), {
+                           "company_id": company_id})
+        connection.execute(
+            text("UPDATE team_cost_entries SET tip_amount = 0 WHERE tip_amount IS NULL"))

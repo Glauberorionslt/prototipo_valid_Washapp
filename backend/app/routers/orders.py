@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from random import choice
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
@@ -14,6 +15,30 @@ from ..whatsapp_client import send_text_message
 
 
 router = APIRouter()
+
+
+READY_MESSAGE_TEMPLATES = (
+    "Ola, {customer_name}!\n"
+    "Seu servico de lavagem {wash_type} ja foi finalizada.\n"
+    "Veiculo: {vehicle} | Placa: {plate}\n"
+    "Valor: {total}",
+    "Oi, {customer_name}!\n"
+    "A servico de lavagem {wash_type} esta pronto.\n"
+    "Veiculo: {vehicle} | Placa: {plate}\n"
+    "Valor total: {total}",
+    "Ola, {customer_name}!\n"
+    "Informamos que servico de lavagem {wash_type} esta pronto.\n"
+    "Veiculo: {vehicle} | Placa: {plate}\n"
+    "Valor: {total}",
+    "Oi, {customer_name}!\n"
+    "Seu servico de lavagem {wash_type} foi finalizado.\n"
+    "Veiculo: {vehicle} | Placa: {plate}\n"
+    "Valor a pagar: {total}",
+    "Ola, {customer_name}!\n"
+    "O servico de lavagem {wash_type} esta finalizado e disponivel.\n"
+    "Veiculo: {vehicle} | Placa: {plate}\n"
+    "Valor: {total}",
+)
 
 
 def _normalize_phone(phone: str | None) -> str | None:
@@ -87,17 +112,20 @@ def _enforce_status_rules(order: Order, new_status: str | None) -> None:
     if new_status is None:
         return
     if order.status == "entregue" and new_status != "entregue":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ordem entregue nao pode ser alterada")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Ordem entregue nao pode ser alterada")
     if order.status == "pronto" and new_status not in {"pronto", "entregue"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ordem pronta so pode seguir para entregue")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Ordem pronta so pode seguir para entregue")
 
 
 def _build_ready_message(order: Order) -> str:
-    return (
-        f"Ola, {order.customer_name}!\n"
-        f"Sua ordem #{order.id} esta pronta para retirada.\n"
-        f"Veiculo: {order.vehicle or '-'} | Placa: {order.plate or '-'}\n"
-        f"Valor: R$ {float(order.total):.2f}"
+    return choice(READY_MESSAGE_TEMPLATES).format(
+        customer_name=order.customer_name,
+        wash_type=order.wash_type,
+        vehicle=order.vehicle or "-",
+        plate=order.plate or "-",
+        total=f"R$ {float(order.total):.2f}",
     )
 
 
@@ -110,7 +138,8 @@ def list_orders(
 ) -> list[OrderOut]:
     if user.company_id is None:
         return []
-    stmt = select(Order).options(selectinload(Order.items)).order_by(Order.created_at.desc())
+    stmt = select(Order).options(selectinload(Order.items)
+                                 ).order_by(Order.created_at.desc())
     stmt = stmt.where(Order.company_id == user.company_id)
     if status_filter:
         stmt = stmt.where(Order.status == status_filter)
@@ -129,25 +158,32 @@ def list_orders(
 
 @router.get("/{order_id}", response_model=OrderOut)
 def get_order(order_id: int, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> OrderOut:
-    order = db.scalar(select(Order).options(selectinload(Order.items)).where(Order.id == order_id, Order.company_id == user.company_id))
+    order = db.scalar(select(Order).options(selectinload(Order.items)).where(
+        Order.id == order_id, Order.company_id == user.company_id))
     if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
     return _order_out(order)
 
 
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> OrderOut:
     if user.company_id is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario sem empresa vinculada")
-    customer = db.scalar(select(Customer).where(Customer.id == payload.customerId, Customer.company_id == user.company_id)) if payload.customerId else None
-    customer_name = payload.customerName or (customer.name if customer else "Avulso")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Usuario sem empresa vinculada")
+    customer = db.scalar(select(Customer).where(Customer.id == payload.customerId,
+                         Customer.company_id == user.company_id)) if payload.customerId else None
+    customer_name = payload.customerName or (
+        customer.name if customer else "Avulso")
     order = Order(
         company_id=user.company_id,
         customer_id=customer.id if customer and not customer.is_default else None,
         customer_name=customer_name,
-        phone=_normalize_phone(payload.phone) or (customer.phone if customer else None),
+        phone=_normalize_phone(payload.phone) or (
+            customer.phone if customer else None),
         vehicle=payload.vehicle or (customer.vehicle if customer else None),
-        plate=_normalize_plate(payload.plate or (customer.plate if customer else None)),
+        plate=_normalize_plate(payload.plate or (
+            customer.plate if customer else None)),
         color=payload.color or (customer.color if customer else None),
         wash_type=payload.washType,
         base_price=payload.basePrice,
@@ -169,7 +205,8 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: obje
             )
         )
     db.commit()
-    order = db.scalar(select(Order).options(selectinload(Order.items)).where(Order.id == order.id))
+    order = db.scalar(select(Order).options(
+        selectinload(Order.items)).where(Order.id == order.id))
     if payload.sendWhatsapp and order and order.phone:
         message = (
             f"Ola, {order.customer_name}!\n"
@@ -179,7 +216,7 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: obje
         result = send_text_message(order.phone, message)
         db.add(
             WhatsAppLog(
-                    company_id=user.company_id,
+                company_id=user.company_id,
                 order_id=order.id,
                 phone=order.phone,
                 message=message,
@@ -193,9 +230,11 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: obje
 
 @router.put("/{order_id}", response_model=OrderOut)
 def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> OrderOut:
-    order = db.scalar(select(Order).options(selectinload(Order.items)).where(Order.id == order_id, Order.company_id == user.company_id))
+    order = db.scalar(select(Order).options(selectinload(Order.items)).where(
+        Order.id == order_id, Order.company_id == user.company_id))
     if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
 
     new_status = payload.status
     _enforce_status_rules(order, new_status)
@@ -204,7 +243,8 @@ def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_
         mutable_fields = payload.model_dump(exclude_unset=True)
         disallowed = set(mutable_fields) - {"status"}
         if disallowed:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ordem entregue nao pode ser editada")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Ordem entregue nao pode ser editada")
 
     mapping = {
         "customerName": "customer_name",
@@ -257,7 +297,8 @@ def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_
     db.add(order)
     db.commit()
     db.refresh(order)
-    order = db.scalar(select(Order).options(selectinload(Order.items)).where(Order.id == order_id))
+    order = db.scalar(select(Order).options(
+        selectinload(Order.items)).where(Order.id == order_id))
     return _order_out(order)
 
 
@@ -267,9 +308,11 @@ def delete_order(
     db: Session = Depends(get_db),
     user: object = Depends(require_manager_password),
 ) -> dict:
-    order = db.scalar(select(Order).where(Order.id == order_id, Order.company_id == user.company_id))
+    order = db.scalar(select(Order).where(
+        Order.id == order_id, Order.company_id == user.company_id))
     if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
     db.delete(order)
     db.commit()
     return {"status": "deleted"}
@@ -277,11 +320,14 @@ def delete_order(
 
 @router.post("/{order_id}/notify-ready")
 def notify_ready(order_id: int, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> dict:
-    order = db.scalar(select(Order).where(Order.id == order_id, Order.company_id == user.company_id))
+    order = db.scalar(select(Order).where(
+        Order.id == order_id, Order.company_id == user.company_id))
     if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
     if not order.phone:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ordem sem telefone")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Ordem sem telefone")
     result = send_text_message(order.phone, _build_ready_message(order))
     db.add(
         WhatsAppLog(

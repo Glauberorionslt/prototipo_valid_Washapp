@@ -22,7 +22,8 @@ router = APIRouter()
 
 
 def _slugify_company_name(value: str) -> str:
-    cleaned = "".join(ch.lower() if ch.isalnum() else "-" for ch in value.strip())
+    cleaned = "".join(ch.lower() if ch.isalnum()
+                      else "-" for ch in value.strip())
     slug = "-".join(part for part in cleaned.split("-") if part)
     return slug or f"empresa-{uuid.uuid4().hex[:8]}"
 
@@ -44,7 +45,8 @@ def _sync_user_company(db: Session, user: User, company_name: str | None) -> Non
         return
     normalized_name = company_name.strip()
     if not normalized_name:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nome da empresa obrigatorio")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Nome da empresa obrigatorio")
     if user.company is None:
         company = _create_company(normalized_name)
         db.add(company)
@@ -90,10 +92,12 @@ def _resolve_linked_user(db: Session, key: AccessKey) -> User | None:
 
 def _build_admin_system_rows(db: Session) -> list[AdminSystemRowOut]:
     users = db.scalars(select(User).order_by(User.created_at.desc())).all()
-    keys = db.scalars(select(AccessKey).order_by(AccessKey.created_at.desc())).all()
+    keys = db.scalars(select(AccessKey).order_by(
+        AccessKey.created_at.desc())).all()
 
     keys_by_id = {key.id: key for key in keys if key.id is not None}
-    key_by_used_user_id = {key.used_by_user_id: key for key in keys if key.used_by_user_id is not None}
+    key_by_used_user_id = {
+        key.used_by_user_id: key for key in keys if key.used_by_user_id is not None}
     orphan_keys: list[AccessKey] = []
     rows: list[AdminSystemRowOut] = []
     consumed_key_ids: set[int] = set()
@@ -228,7 +232,8 @@ def update_whatsapp_config(
 ) -> AdminWhatsAppConfigOut:
     normalized_phone = _normalize_sender_phone(payload.phone)
     if normalized_phone is None or len(normalized_phone) not in {10, 11, 12, 13}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Numero de WhatsApp invalido")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Numero de WhatsApp invalido")
 
     company.whatsapp_sender_phone = normalized_phone
     db.add(company)
@@ -244,7 +249,8 @@ def relink_whatsapp(
 ) -> AdminWhatsAppConfigOut:
     result = reset_bridge_session()
     if not bool(result.get("ok", False)):
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=result.get("detail") or "Falha ao reiniciar bridge")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=result.get(
+            "detail") or "Falha ao reiniciar bridge")
     return _build_whatsapp_config(company)
 
 
@@ -258,7 +264,8 @@ def list_users(db: Session = Depends(get_db), _: User = Depends(require_master_u
 def create_user(payload: AdminUserCreate, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> AdminUserOut:
     email = payload.email.strip().lower()
     if db.scalar(select(User).where(User.email == email)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario ja existe")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario ja existe")
     user = User(
         email=email,
         full_name=payload.fullName,
@@ -278,7 +285,8 @@ def create_user(payload: AdminUserCreate, db: Session = Depends(get_db), _: User
 def update_user(user_id: int, payload: AdminUserUpdate, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> AdminUserOut:
     user = db.get(User, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Usuario nao encontrado")
     if payload.fullName is not None:
         user.full_name = payload.fullName
     _sync_user_company(db, user, payload.companyName)
@@ -288,7 +296,8 @@ def update_user(user_id: int, payload: AdminUserUpdate, db: Session = Depends(ge
         user.password_hash = hash_password(payload.password)
     if payload.isMaster is not None:
         if payload.isMaster and user.user_status != UserStatus.ACTIVE.value:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ative o usuario antes de conceder acesso master")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Ative o usuario antes de conceder acesso master")
         user.is_master = payload.isMaster
     db.add(user)
     db.commit()
@@ -300,7 +309,8 @@ def update_user(user_id: int, payload: AdminUserUpdate, db: Session = Depends(ge
 def delete_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> dict:
     user = db.get(User, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Usuario nao encontrado")
     db.delete(user)
     db.commit()
     return {"status": "deleted"}
@@ -310,9 +320,11 @@ def delete_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(r
 def toggle_user_status(user_id: int, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> AdminUserOut:
     user = db.get(User, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Usuario nao encontrado")
     if user.user_status != UserStatus.ACTIVE.value and user.company and user.company.contract_status != ContractStatus.ACTIVE.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ative o contrato antes de liberar o usuario")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Ative o contrato antes de liberar o usuario")
     user.user_status = UserStatus.INACTIVE.value if user.user_status == UserStatus.ACTIVE.value else UserStatus.ACTIVE.value
     db.add(user)
     db.commit()
@@ -324,7 +336,8 @@ def toggle_user_status(user_id: int, db: Session = Depends(get_db), _: User = De
 def toggle_contract_status(company_id: int, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> CompanyContractStatusOut:
     company = db.get(Company, company_id)
     if company is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa nao encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Empresa nao encontrada")
     company.contract_status = ContractStatus.INACTIVE.value if company.contract_status == ContractStatus.ACTIVE.value else ContractStatus.ACTIVE.value
     db.add(company)
     db.commit()
@@ -334,9 +347,11 @@ def toggle_contract_status(company_id: int, db: Session = Depends(get_db), _: Us
 
 @router.get("/system/access-keys", response_model=list[AccessKeyOut])
 def list_access_keys(db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> list[AccessKeyOut]:
-    keys = db.scalars(select(AccessKey).order_by(AccessKey.created_at.desc())).all()
+    keys = db.scalars(select(AccessKey).order_by(
+        AccessKey.created_at.desc())).all()
     key_ids = [key.id for key in keys]
-    used_user_ids = [key.used_by_user_id for key in keys if key.used_by_user_id is not None]
+    used_user_ids = [
+        key.used_by_user_id for key in keys if key.used_by_user_id is not None]
     candidate_users = db.scalars(
         select(User).where(
             (User.id.in_(used_user_ids) if used_user_ids else False) |
@@ -344,9 +359,11 @@ def list_access_keys(db: Session = Depends(get_db), _: User = Depends(require_ma
         )
     ).all() if key_ids or used_user_ids else []
     users_by_id = {user.id: user for user in candidate_users}
-    users_by_access_key_id = {user.access_key_id: user for user in candidate_users if user.access_key_id is not None}
+    users_by_access_key_id = {
+        user.access_key_id: user for user in candidate_users if user.access_key_id is not None}
     for key in keys:
-        linked_user = users_by_id.get(key.used_by_user_id) if key.used_by_user_id is not None else None
+        linked_user = users_by_id.get(
+            key.used_by_user_id) if key.used_by_user_id is not None else None
         if linked_user is None:
             linked_user = users_by_access_key_id.get(key.id)
         key.__dict__["linked_user"] = linked_user
@@ -382,14 +399,16 @@ def export_access_keys(db: Session = Depends(get_db), _: User = Depends(require_
     ]
 
     dataframe = pd.DataFrame(rows)
-    target = Path(tempfile.gettempdir()) / f"washapp2_admin_sistema_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.xlsx"
+    target = Path(tempfile.gettempdir(
+    )) / f"washapp2_admin_sistema_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.xlsx"
     dataframe.to_excel(target, index=False)
     return FileResponse(path=target, filename=target.name)
 
 
 @router.post("/system/access-keys", response_model=AccessKeyOut, status_code=status.HTTP_201_CREATED)
 def create_access_key(payload: AccessKeyCreate, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> AccessKeyOut:
-    key = AccessKey(key_token=payload.keyToken or str(uuid.uuid4()), label=payload.label, status=AccessKeyStatus.ACTIVE.value)
+    key = AccessKey(key_token=payload.keyToken or str(
+        uuid.uuid4()), label=payload.label, status=AccessKeyStatus.ACTIVE.value)
     db.add(key)
     db.commit()
     db.refresh(key)
@@ -400,10 +419,12 @@ def create_access_key(payload: AccessKeyCreate, db: Session = Depends(get_db), _
 def toggle_access_key(key_id: int, db: Session = Depends(get_db), _: User = Depends(require_master_user)) -> AccessKeyOut:
     key = db.get(AccessKey, key_id)
     if key is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chave nao encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chave nao encontrada")
     linked_user = _resolve_linked_user(db, key)
     if key.status != AccessKeyStatus.ACTIVE.value and linked_user and linked_user.company and linked_user.company.contract_status != ContractStatus.ACTIVE.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ative o contrato antes de reativar a chave")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Ative o contrato antes de reativar a chave")
     key.status = AccessKeyStatus.INACTIVE.value if key.status == AccessKeyStatus.ACTIVE.value else AccessKeyStatus.ACTIVE.value
     db.add(key)
     db.commit()

@@ -40,7 +40,7 @@ def _filtered_orders(db: Session, company_id: int, start: date | None, end: date
 
 
 def _sum_team_costs(db: Session, company_id: int, start: date | None, end: date | None) -> float:
-    stmt = select(func.coalesce(func.sum(TeamCostEntry.amount + TeamCostEntry.tip_amount), 0)).where(TeamCostEntry.company_id == company_id)
+    stmt = select(func.coalesce(func.sum(TeamCostEntry.amount), 0)).where(TeamCostEntry.company_id == company_id)
     if start is not None:
         stmt = stmt.where(TeamCostEntry.entry_date >= start)
     if end is not None:
@@ -49,7 +49,8 @@ def _sum_team_costs(db: Session, company_id: int, start: date | None, end: date 
 
 
 def _sum_operational_costs(db: Session, company_id: int, start: date | None, end: date | None) -> float:
-    stmt = select(func.coalesce(func.sum(OperationalCostEntry.amount), 0)).where(OperationalCostEntry.company_id == company_id)
+    stmt = select(func.coalesce(func.sum(OperationalCostEntry.amount), 0)).where(
+        OperationalCostEntry.company_id == company_id)
     if start is not None:
         stmt = stmt.where(OperationalCostEntry.entry_date >= start)
     if end is not None:
@@ -58,7 +59,8 @@ def _sum_operational_costs(db: Session, company_id: int, start: date | None, end
 
 
 def _report_out(db: Session, company_id: int, orders: list[Order], start: date | None, end: date | None) -> FinanceReportOut:
-    finalized = [order for order in orders if order.status in {"pronto", "entregue"}]
+    finalized = [order for order in orders if order.status in {
+        "pronto", "entregue"}]
     total_amount = round(sum(float(order.total) for order in finalized), 2)
     team_cost_total = _sum_team_costs(db, company_id, start, end)
     operational_cost_total = _sum_operational_costs(db, company_id, start, end)
@@ -68,7 +70,8 @@ def _report_out(db: Session, company_id: int, orders: list[Order], start: date |
             finalizedCount=len(finalized),
             teamCostTotal=team_cost_total,
             operationalCostTotal=operational_cost_total,
-            netOperationalTotal=round(total_amount - team_cost_total - operational_cost_total, 2),
+            netOperationalTotal=round(
+                total_amount - team_cost_total - operational_cost_total, 2),
         ),
         rows=[
             FinanceRowOut(
@@ -107,7 +110,8 @@ def export_excel(
     db: Session = Depends(get_db),
     user: User = Depends(require_manager_password),
 ) -> FileResponse:
-    orders = _filtered_orders(db, user.company_id or 0, start, end, status_filter)[:100]
+    orders = _filtered_orders(db, user.company_id or 0,
+                              start, end, status_filter)[:100]
     data = [
         {
             "ID": order.id,
@@ -122,7 +126,8 @@ def export_excel(
         for order in orders
     ]
     dataframe = pd.DataFrame(data)
-    target = Path(tempfile.gettempdir()) / f"washapp2_financeiro_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.xlsx"
+    target = Path(tempfile.gettempdir(
+    )) / f"washapp2_financeiro_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.xlsx"
     dataframe.to_excel(target, index=False)
     return FileResponse(path=target, filename=target.name)
 
@@ -136,7 +141,8 @@ def send_whatsapp_report(
     report_data = _report_out(
         db,
         user.company_id or 0,
-        _filtered_orders(db, user.company_id or 0, payload.start, payload.end, payload.status),
+        _filtered_orders(db, user.company_id or 0,
+                         payload.start, payload.end, payload.status),
         payload.start,
         payload.end,
     )

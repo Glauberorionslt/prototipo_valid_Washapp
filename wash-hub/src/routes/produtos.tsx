@@ -39,8 +39,18 @@ function Produtos() {
     setMessage(null);
 
     try {
+      if (!form.name.trim() && !form.price.trim()) {
+        throw new Error("Informe o nome e o preco do produto antes de salvar.");
+      }
+      if (!form.name.trim()) {
+        throw new Error("Informe o nome do produto antes de salvar.");
+      }
+      if (!form.price.trim()) {
+        throw new Error("Informe o preco do produto antes de salvar.");
+      }
+
       const price = Number(form.price);
-      if (Number.isNaN(price)) {
+      if (Number.isNaN(price) || price <= 0) {
         throw new Error("Informe um preco valido.");
       }
 

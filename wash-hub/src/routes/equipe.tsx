@@ -24,6 +24,10 @@ import {
 
 export const Route = createFileRoute("/equipe")({ component: EquipePage });
 
+function formatCurrency(value: number) {
+  return `R$ ${value.toFixed(2)}`;
+}
+
 type LaunchLine = {
   memberId: string;
   amount: string;
@@ -48,7 +52,9 @@ function EquipePage() {
   const [error, setError] = useState<string | null>(null);
 
   const activeMembers = useMemo(() => members.filter((member) => member.isActive), [members]);
-  const totalEntries = useMemo(() => entries.reduce((sum, entry) => sum + entry.totalAmount, 0), [entries]);
+  const totalAmountEntries = useMemo(() => entries.reduce((sum, entry) => sum + entry.amount, 0), [entries]);
+  const totalTipEntries = useMemo(() => entries.reduce((sum, entry) => sum + entry.tipAmount, 0), [entries]);
+  const totalEntries = useMemo(() => totalAmountEntries + totalTipEntries, [totalAmountEntries, totalTipEntries]);
 
   async function authorizePage() {
     const password = await askManagerPassword("acessar a area de equipe");
@@ -266,7 +272,7 @@ function EquipePage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold">Lancamentos do dia</p>
-                    <p className="text-xs text-muted-foreground">Total da equipe com gorjetas: R$ {totalEntries.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Valor: {formatCurrency(totalAmountEntries)} • Gorjeta: {formatCurrency(totalTipEntries)} • Total geral: {formatCurrency(totalEntries)}</p>
                   </div>
                 </div>
                 <div className="space-y-3">

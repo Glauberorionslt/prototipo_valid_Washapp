@@ -11,19 +11,23 @@ from app.models import AppSetting, Customer, Order, Product
 
 def main() -> None:
     create_schema()
-    mock_path = Path(__file__).resolve().parent.parent / "wash-hub" / "src" / "data" / "mock.json"
+    mock_path = Path(__file__).resolve().parent.parent / \
+        "wash-hub" / "src" / "data" / "mock.json"
     payload = json.loads(mock_path.read_text(encoding="utf-8"))
 
     with SessionLocal() as db:
         if not db.scalar(select(AppSetting).where(AppSetting.key == "shop_name")):
             db.add_all(
                 [
-                    AppSetting(key="shop_name", value=payload["currentUser"]["shop"]),
-                    AppSetting(key="plan_name", value=payload["currentUser"]["plan"]),
+                    AppSetting(key="shop_name",
+                               value=payload["currentUser"]["shop"]),
+                    AppSetting(key="plan_name",
+                               value=payload["currentUser"]["plan"]),
                 ]
             )
 
-        existing_customers = {customer.name for customer in db.scalars(select(Customer)).all()}
+        existing_customers = {
+            customer.name for customer in db.scalars(select(Customer)).all()}
         for customer in payload["customers"]:
             if customer["name"] in existing_customers:
                 continue
@@ -38,13 +42,15 @@ def main() -> None:
                 )
             )
 
-        existing_products = {product.name for product in db.scalars(select(Product)).all()}
+        existing_products = {
+            product.name for product in db.scalars(select(Product)).all()}
         for product in payload["products"]:
             if product["name"] in existing_products:
                 continue
             db.add(Product(name=product["name"], price=product["price"]))
 
-        existing_order_ids = {order.id for order in db.scalars(select(Order)).all()}
+        existing_order_ids = {
+            order.id for order in db.scalars(select(Order)).all()}
         for order in payload["orders"]:
             if order["id"] in existing_order_ids:
                 continue

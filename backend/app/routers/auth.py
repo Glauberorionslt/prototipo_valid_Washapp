@@ -18,7 +18,8 @@ router = APIRouter()
 
 
 def _slugify_company_name(value: str) -> str:
-    cleaned = "".join(ch.lower() if ch.isalnum() else "-" for ch in value.strip())
+    cleaned = "".join(ch.lower() if ch.isalnum()
+                      else "-" for ch in value.strip())
     slug = "-".join(part for part in cleaned.split("-") if part)
     return slug or f"empresa-{uuid.uuid4().hex[:8]}"
 
@@ -40,7 +41,8 @@ def _create_company_for_user(db: Session, email: str, full_name: str | None) -> 
 
 
 def _user_to_current_user(user: User, db: Session) -> CurrentUserOut:
-    access_key = db.get(AccessKey, user.access_key_id) if user.access_key_id is not None else None
+    access_key = db.get(
+        AccessKey, user.access_key_id) if user.access_key_id is not None else None
     return CurrentUserOut(
         id=user.id,
         name=user.full_name or user.email,
@@ -61,12 +63,15 @@ def _user_to_current_user(user: User, db: Session) -> CurrentUserOut:
 
 def _get_user_access_key(db: Session, user: User) -> AccessKey:
     if user.access_key_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario nao possui chave vinculada")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Usuario nao possui chave vinculada")
     key = db.get(AccessKey, user.access_key_id)
     if key is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chave vinculada nao encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Chave vinculada nao encontrada")
     if key.status != AccessKeyStatus.ACTIVE.value:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave inativa")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Chave inativa")
     return key
 
 
@@ -75,11 +80,13 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     email = payload.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario ou senha invalidos")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Usuario ou senha invalidos")
 
     now = datetime.utcnow()
     if user.locked_until and user.locked_until > now:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Conta bloqueada temporariamente")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Conta bloqueada temporariamente")
 
     if not verify_password(payload.password, user.password_hash):
         user.failed_attempts += 1
@@ -88,30 +95,38 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
             user.locked_until = now + timedelta(minutes=30)
         db.add(user)
         db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario ou senha invalidos")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Usuario ou senha invalidos")
 
     if user.user_status != UserStatus.ACTIVE.value:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario inativo")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Usuario inativo")
 
     if not user.is_master:
         if user.company is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empresa nao encontrada")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Empresa nao encontrada")
         if user.company.contract_status != ContractStatus.ACTIVE.value:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contrato inativo")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Contrato inativo")
         if user.access_key_id is not None:
             key = db.get(AccessKey, user.access_key_id)
             if key is None:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave vinculada nao encontrada")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="Chave vinculada nao encontrada")
             if key.status != AccessKeyStatus.ACTIVE.value:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave inativa")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="Chave inativa")
 
     user.failed_attempts = 0
     user.locked_until = None
     db.add(user)
     db.commit()
 
-    needs_key = (not user.is_master) and (user.activated_at is None or user.access_key_id is None)
-    needs_manager_password = (not user.is_master) and (not needs_key) and (not user.manager_password_hash)
+    needs_key = (not user.is_master) and (
+        user.activated_at is None or user.access_key_id is None)
+    needs_manager_password = (not user.is_master) and (
+        not needs_key) and (not user.manager_password_hash)
 
     return LoginResponse(
         access_token=create_access_token(str(user.id)),
@@ -135,7 +150,8 @@ def bootstrap_master(
     x_system_admin_password: str | None = Header(default=None),
 ) -> dict:
     if not x_system_admin_password or x_system_admin_password != settings.system_admin_password:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
 
     email = payload.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
@@ -167,7 +183,8 @@ def bootstrap_master(
 def register(payload: BootstrapMasterRequest, db: Session = Depends(get_db)) -> dict:
     email = payload.email.strip().lower()
     if db.scalar(select(User).where(User.email == email)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario ja existe")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario ja existe")
     user = User(
         email=email,
         full_name=payload.full_name,
@@ -186,13 +203,16 @@ def reset_password(payload: PasswordResetRequest, db: Session = Depends(get_db))
     email = payload.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Usuario nao encontrado")
     if user.is_master:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recuperacao por chave indisponivel para usuario master")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Recuperacao por chave indisponivel para usuario master")
 
     key = _get_user_access_key(db, user)
     if key.key_token != payload.accessKeyToken.strip():
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave de acesso invalida")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Chave de acesso invalida")
 
     user.password_hash = hash_password(payload.password)
     user.failed_attempts = 0
@@ -208,13 +228,17 @@ def set_key(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    key = db.scalar(select(AccessKey).where(AccessKey.key_token == payload.key_token.strip()))
+    key = db.scalar(select(AccessKey).where(
+        AccessKey.key_token == payload.key_token.strip()))
     if key is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chave nao encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chave nao encontrada")
     if key.status != AccessKeyStatus.ACTIVE.value:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave inativa")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Chave inativa")
     if key.used_at is not None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave ja utilizada")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Chave ja utilizada")
 
     now = datetime.utcnow()
     key.used_at = now
@@ -233,7 +257,8 @@ def set_manager_password(
     db: Session = Depends(get_db),
 ) -> dict:
     if not user.is_master and (user.activated_at is None or user.access_key_id is None):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Valide a chave primeiro")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Valide a chave primeiro")
     user.manager_password_hash = hash_password(payload.password)
     user.manager_password_set_at = datetime.utcnow()
     db.add(user)
@@ -249,9 +274,11 @@ def verify_manager_password(
     if user.is_master:
         return {"status": "ok"}
     if not user.manager_password_hash:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha gerencial nao cadastrada")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Senha gerencial nao cadastrada")
     if not verify_password(payload.password, user.manager_password_hash):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Senha gerencial invalida")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Senha gerencial invalida")
     return {"status": "ok"}
 
 
@@ -267,7 +294,8 @@ def authorize_admin_operational_access(
     if not user.manager_password_hash:
         return {"status": "ok", "method": "open"}
 
-    manager_password = payload.managerPassword.strip() if payload.managerPassword else None
+    manager_password = payload.managerPassword.strip(
+    ) if payload.managerPassword else None
     access_key_token = payload.accessKeyToken.strip() if payload.accessKeyToken else None
 
     if manager_password and verify_password(manager_password, user.manager_password_hash):
@@ -278,7 +306,8 @@ def authorize_admin_operational_access(
         if key.key_token == access_key_token:
             return {"status": "ok", "method": "access-key"}
 
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Senha gerencial ou chave de acesso invalida")
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Senha gerencial ou chave de acesso invalida")
 
 
 @router.post("/access-keys/generate")

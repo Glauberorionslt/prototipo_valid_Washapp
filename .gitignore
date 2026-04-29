@@ -24,6 +24,8 @@ dist-ssr/
 .vinxi/
 .nitro/
 .wrangler/
+wash-hub/playwright-report/
+wash-hub/test-results/
 
 # WhatsApp local session state
 whatsapp-bridge/.baileys-auth/

@@ -60,8 +60,10 @@ class PasswordResetRequest(BaseModel):
 
 
 class AdminOperationalAccessRequest(BaseModel):
-    managerPassword: str | None = Field(default=None, min_length=1, max_length=100)
-    accessKeyToken: str | None = Field(default=None, min_length=1, max_length=255)
+    managerPassword: str | None = Field(
+        default=None, min_length=1, max_length=100)
+    accessKeyToken: str | None = Field(
+        default=None, min_length=1, max_length=255)
 
 
 class DashboardStatsOut(BaseModel):
