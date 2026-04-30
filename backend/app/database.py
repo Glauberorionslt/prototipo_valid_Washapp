@@ -69,11 +69,16 @@ def _apply_post_create_migrations() -> None:
         if company_row is None:
             company_id = connection.execute(
                 text(
-                    "INSERT INTO companies (name, slug, plan_name, created_at, updated_at) "
-                    "VALUES (:name, :slug, :plan_name, NOW(), NOW()) RETURNING id"
+                    "INSERT INTO companies (name, slug, contract_code, contract_status, plan_name, created_at, updated_at) "
+                    "VALUES (:name, :slug, :contract_code, :contract_status, :plan_name, NOW(), NOW()) RETURNING id"
                 ),
-                {"name": "Empresa Padrao",
-                    "slug": "empresa-padrao", "plan_name": "Pago"},
+                {
+                    "name": "Empresa Padrao",
+                    "slug": "empresa-padrao",
+                    "contract_code": "CTR-BOOTSTRAP-EMPRESA-PADRAO",
+                    "contract_status": "active",
+                    "plan_name": "Pago",
+                },
             ).scalar_one()
         else:
             company_id = int(company_row[0])
