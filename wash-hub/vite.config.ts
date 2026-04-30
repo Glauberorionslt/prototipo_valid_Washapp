@@ -6,4 +6,14 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-export default defineConfig();
+const allowedHosts = [process.env.RAILWAY_PUBLIC_DOMAIN].filter(
+	(host): host is string => Boolean(host),
+);
+
+export default defineConfig({
+	vite: {
+		server: {
+			allowedHosts,
+		},
+	},
+});
