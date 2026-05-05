@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
+import tempfile
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
+import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,6 +38,21 @@ def _entry_out(entry: OperationalCostEntry) -> OperationalCostEntryOut:
         createdAt=entry.created_at,
         updatedAt=entry.updated_at,
     )
+
+
+def _entries_stmt(company_id: int | None, entry_date: date | None, start: date | None, end: date | None):
+    stmt = (
+        select(OperationalCostEntry)
+        .join(OperationalCostEntry.cost_type)
+        .where(OperationalCostEntry.company_id == company_id)
+    )
+    if entry_date is not None:
+        stmt = stmt.where(OperationalCostEntry.entry_date == entry_date)
+    if start is not None:
+        stmt = stmt.where(OperationalCostEntry.entry_date >= start)
+    if end is not None:
+        stmt = stmt.where(OperationalCostEntry.entry_date <= end)
+    return stmt.order_by(OperationalCostEntry.entry_date.desc(), OperationalCostType.name)
 
 
 @router.get("/types", response_model=list[OperationalCostTypeOut])
@@ -86,17 +105,39 @@ def delete_type(cost_type_id: int, db: Session = Depends(get_db), user: User = D
 
 @router.get("/entries", response_model=list[OperationalCostEntryOut])
 def list_entries(
-    entry_date: date = Query(alias="entryDate"),
+    entry_date: date | None = Query(default=None, alias="entryDate"),
+    start: date | None = Query(default=None),
+    end: date | None = Query(default=None),
     db: Session = Depends(get_db),
     user: User = Depends(require_manager_password),
 ) -> list[OperationalCostEntryOut]:
-    entries = db.scalars(
-        select(OperationalCostEntry)
-        .join(OperationalCostEntry.cost_type)
-        .where(OperationalCostEntry.company_id == user.company_id, OperationalCostEntry.entry_date == entry_date)
-        .order_by(OperationalCostType.name)
-    ).all()
+    stmt = _entries_stmt(user.company_id, entry_date, start, end)
+    entries = db.scalars(stmt).all()
     return [_entry_out(entry) for entry in entries]
+
+
+@router.get("/entries/export")
+def export_entries(
+    entry_date: date | None = Query(default=None, alias="entryDate"),
+    start: date | None = Query(default=None),
+    end: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_manager_password),
+) -> FileResponse:
+    entries = db.scalars(_entries_stmt(user.company_id, entry_date, start, end)).all()
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Data": entry.entry_date.strftime("%d/%m/%Y"),
+                "Despesa": entry.cost_type.name,
+                "Valor": float(entry.amount),
+            }
+            for entry in entries
+        ]
+    )
+    target = Path(tempfile.gettempdir()) / f"washapp2_custos_operacionais_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.xlsx"
+    dataframe.to_excel(target, index=False)
+    return FileResponse(path=target, filename=target.name)
 
 
 @router.post("/entries/batch", response_model=list[OperationalCostEntryOut])

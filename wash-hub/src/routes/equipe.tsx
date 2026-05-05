@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Briefcase, Plus, Pencil, Trash2, CalendarDays, Save } from "lucide-react";
+import { ArrowLeft, Briefcase, Plus, Pencil, Trash2, CalendarDays, Save, Filter, Download } from "lucide-react";
 import { AppLayout } from "@/components/app/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   createTeamMember,
   deleteTeamEntry,
   deleteTeamMember,
+  exportTeamEntries,
   fetchTeamEntries,
   listTeamMembers,
   saveTeamEntries,
@@ -38,6 +39,26 @@ function currentDateInput() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function readStoredFilters() {
+  if (typeof window === "undefined") {
+    const current = currentDateInput();
+    return { start: current, end: current };
+  }
+
+  try {
+    const raw = window.localStorage.getItem("washapp2.team.filters");
+    const current = currentDateInput();
+    if (!raw) {
+      return { start: current, end: current };
+    }
+    const parsed = JSON.parse(raw) as Partial<{ start: string; end: string }>;
+    return { start: parsed.start || current, end: parsed.end || current };
+  } catch {
+    const current = currentDateInput();
+    return { start: current, end: current };
+  }
+}
+
 function EquipePage() {
   const navigate = useNavigate();
   const { askManagerPassword, dialog } = useManagerPasswordDialog();
@@ -45,6 +66,7 @@ function EquipePage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [entries, setEntries] = useState<TeamCostEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState(currentDateInput());
+  const [filters, setFilters] = useState(readStoredFilters);
   const [launches, setLaunches] = useState<LaunchLine[]>([{ memberId: "", amount: "", tipAmount: "" }]);
   const [memberForm, setMemberForm] = useState("");
   const [editingMemberId, setEditingMemberId] = useState<number | null>(null);
@@ -55,6 +77,28 @@ function EquipePage() {
   const totalAmountEntries = useMemo(() => entries.reduce((sum, entry) => sum + entry.amount, 0), [entries]);
   const totalTipEntries = useMemo(() => entries.reduce((sum, entry) => sum + entry.tipAmount, 0), [entries]);
   const totalEntries = useMemo(() => totalAmountEntries + totalTipEntries, [totalAmountEntries, totalTipEntries]);
+
+  async function handleExport() {
+    const password = managerPassword ?? await askManagerPassword("exportar equipe");
+    if (!password) {
+      return;
+    }
+    try {
+      const blob = await exportTeamEntries({ start: filters.start, end: filters.end }, password);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `equipe-${filters.start || "inicio"}-${filters.end || "fim"}.xlsx`;
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      setManagerPassword(password);
+      setMessage("Tabela da equipe exportada.");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao exportar equipe");
+      setMessage(null);
+    }
+  }
 
   async function authorizePage() {
     const password = await askManagerPassword("acessar a area de equipe");
@@ -75,7 +119,7 @@ function EquipePage() {
   async function loadBaseData(password: string) {
     const [memberPayload, entryPayload] = await Promise.all([
       listTeamMembers(password),
-      fetchTeamEntries(selectedDate, password),
+      fetchTeamEntries({ start: filters.start, end: filters.end }, password),
     ]);
     setMembers(memberPayload);
     setEntries(entryPayload);
@@ -90,7 +134,14 @@ function EquipePage() {
       return;
     }
     loadBaseData(managerPassword).catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar equipe"));
-  }, [managerPassword, selectedDate]);
+  }, [managerPassword, filters.start, filters.end]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem("washapp2.team.filters", JSON.stringify(filters));
+  }, [filters]);
 
   async function handleSaveMember() {
     if (!managerPassword) {
@@ -151,7 +202,15 @@ function EquipePage() {
 
     try {
       const saved = await saveTeamEntries(selectedDate, parsed, managerPassword);
-      setEntries(saved);
+      setEntries((current) => {
+        const remaining = current.filter((entry) => entry.entryDate !== selectedDate);
+        return [...saved, ...remaining].sort((left, right) => {
+          if (left.entryDate === right.entryDate) {
+            return left.memberName.localeCompare(right.memberName);
+          }
+          return left.entryDate < right.entryDate ? 1 : -1;
+        });
+      });
       setLaunches([{ memberId: "", amount: "", tipAmount: "" }]);
       setMessage("Lancamentos da equipe salvos.");
     } catch (err) {
@@ -272,19 +331,76 @@ function EquipePage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold">Lancamentos do dia</p>
-                    <p className="text-xs text-muted-foreground">Valor: {formatCurrency(totalAmountEntries)} • Gorjeta: {formatCurrency(totalTipEntries)} • Total geral: {formatCurrency(totalEntries)}</p>
+                    <p className="text-xs text-muted-foreground">Valor: {formatCurrency(entries.filter((entry) => entry.entryDate === selectedDate).reduce((sum, entry) => sum + entry.amount, 0))} • Gorjeta: {formatCurrency(entries.filter((entry) => entry.entryDate === selectedDate).reduce((sum, entry) => sum + entry.tipAmount, 0))} • Total geral: {formatCurrency(entries.filter((entry) => entry.entryDate === selectedDate).reduce((sum, entry) => sum + entry.totalAmount, 0))}</p>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {entries.map((entry) => (
+                  {entries.filter((entry) => entry.entryDate === selectedDate).map((entry) => (
                     <TeamEntryRow key={entry.id} entry={entry} onSave={handleUpdateEntry} onDelete={handleDeleteEntry} />
                   ))}
-                  {!entries.length && <p className="text-sm text-muted-foreground">Nenhum lancamento para esta data.</p>}
+                  {!entries.filter((entry) => entry.entryDate === selectedDate).length && <p className="text-sm text-muted-foreground">Nenhum lancamento para esta data.</p>}
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        <Card className="border-border/60 shadow-soft">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base"><Filter className="h-4 w-4 text-primary" /> Consulta da Equipe</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => void handleExport()}><Download className="h-4 w-4" /> Excel</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div>
+                <Label>Data Inicial</Label>
+                <Input type="date" className="mt-1.5" value={filters.start} onChange={(event) => setFilters((current) => ({ ...current, start: event.target.value }))} />
+              </div>
+              <div>
+                <Label>Data Final</Label>
+                <Input type="date" className="mt-1.5" value={filters.end} onChange={(event) => setFilters((current) => ({ ...current, end: event.target.value }))} />
+              </div>
+              <div className="md:col-span-2 flex items-end">
+                <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 w-full">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Total filtrado</p>
+                  <p className="text-xl font-bold tracking-tight">{formatCurrency(totalEntries)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto rounded-lg border border-border/60">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted/50">
+                  <tr className="text-left">
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data</th>
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Equipe</th>
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Valor</th>
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Gorjeta</th>
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {entries.map((entry) => (
+                    <tr key={entry.id} className="transition-smooth hover:bg-muted/40">
+                      <td className="p-3 text-muted-foreground">{new Date(`${entry.entryDate}T00:00:00`).toLocaleDateString("pt-BR")}</td>
+                      <td className="p-3 font-medium">{entry.memberName}</td>
+                      <td className="p-3 text-right">{formatCurrency(entry.amount)}</td>
+                      <td className="p-3 text-right">{formatCurrency(entry.tipAmount)}</td>
+                      <td className="p-3 text-right font-semibold">{formatCurrency(entry.totalAmount)}</td>
+                    </tr>
+                  ))}
+                  {!entries.length && (
+                    <tr>
+                      <td colSpan={5} className="p-6 text-center text-sm text-muted-foreground">Nenhum lançamento encontrado para o período selecionado.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );

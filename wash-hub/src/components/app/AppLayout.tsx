@@ -24,12 +24,14 @@ export function AppLayout({
   searchValue,
   onSearchChange,
   searchPlaceholder = "Buscar por placa, cliente, ordem...",
+  showSearch,
   onBellClick,
 }: {
   children: React.ReactNode;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  showSearch?: boolean;
   onBellClick?: () => void;
 }) {
   const location = useLocation();
@@ -58,6 +60,7 @@ export function AppLayout({
   const nav = user.isMaster
     ? [...baseNav, { to: "/admin-sistema" as const, label: "Admin Sistema", icon: Shield }]
     : baseNav;
+  const shouldShowSearch = showSearch ?? Boolean(onSearchChange);
 
   const renderNavLinks = (mobile = false) =>
     nav.map((item) => {
@@ -112,7 +115,7 @@ export function AppLayout({
             <Droplets className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <p className="text-base font-semibold tracking-tight">Wash App</p>
+            <p className="text-base font-semibold tracking-tight">Whashapp Auto</p>
             <p className="text-xs text-sidebar-foreground/60">{user.shop}</p>
           </div>
         </div>
@@ -163,7 +166,7 @@ export function AppLayout({
                         <Droplets className="h-5 w-5 text-primary-foreground" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold tracking-tight">Wash App</p>
+                        <p className="text-base font-semibold tracking-tight">Whashapp Auto</p>
                         <p className="text-xs text-sidebar-foreground/60">{user.shop}</p>
                       </div>
                     </div>
@@ -197,16 +200,19 @@ export function AppLayout({
               <p className="truncate text-xs text-muted-foreground">{user.role}</p>
             </div>
 
-            <div className="relative hidden flex-1 max-w-md md:block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder}
-                className="pl-9 bg-background/60 border-border/60"
-                value={searchValue ?? ""}
-                onChange={(event) => onSearchChange?.(event.target.value)}
-                readOnly={!onSearchChange}
-              />
-            </div>
+            {shouldShowSearch ? (
+              <div className="relative hidden max-w-md flex-1 md:block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={searchPlaceholder}
+                  className="border-border/60 bg-background/60 pl-9"
+                  value={searchValue ?? ""}
+                  onChange={(event) => onSearchChange?.(event.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="hidden flex-1 md:block" />
+            )}
             <div className="flex-1 md:hidden" />
             <Button variant="ghost" size="icon" className="relative" onClick={onBellClick}>
               <Bell className="h-5 w-5" />
@@ -223,18 +229,19 @@ export function AppLayout({
             </div>
           </div>
 
-          <div className="border-t border-border/40 px-4 pb-4 md:hidden sm:px-8">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder}
-                className="pl-9 bg-background/60 border-border/60"
-                value={searchValue ?? ""}
-                onChange={(event) => onSearchChange?.(event.target.value)}
-                readOnly={!onSearchChange}
-              />
+          {shouldShowSearch ? (
+            <div className="border-t border-border/40 px-4 pb-4 md:hidden sm:px-8">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={searchPlaceholder}
+                  className="border-border/60 bg-background/60 pl-9"
+                  value={searchValue ?? ""}
+                  onChange={(event) => onSearchChange?.(event.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
         </header>
 
         <main className="px-4 py-6 sm:px-8 sm:py-8">{children}</main>

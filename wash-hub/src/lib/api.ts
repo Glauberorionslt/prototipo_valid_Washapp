@@ -744,10 +744,39 @@ export function deleteTeamMember(memberId: number, managerPassword: string) {
   });
 }
 
-export function fetchTeamEntries(entryDate: string, managerPassword: string) {
-  return apiRequest<TeamCostEntry[]>(`/team/entries?entryDate=${encodeURIComponent(entryDate)}`, {
+export function fetchTeamEntries(
+  filters: { entryDate?: string; start?: string; end?: string },
+  managerPassword: string,
+) {
+  const params = new URLSearchParams();
+  if (filters.entryDate) params.set("entryDate", filters.entryDate);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<TeamCostEntry[]>(`/team/entries${suffix}`, {
     managerPassword,
   });
+}
+
+export async function exportTeamEntries(
+  filters: { entryDate?: string; start?: string; end?: string },
+  managerPassword: string,
+) {
+  const params = new URLSearchParams();
+  if (filters.entryDate) params.set("entryDate", filters.entryDate);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE_URL}/team/entries/export${suffix}`, {
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+      "x-manager-password": managerPassword,
+    },
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.text());
+  }
+  return response.blob();
 }
 
 export function saveTeamEntries(entryDate: string, items: Array<{ memberId: number; amount: number; tipAmount: number }>, managerPassword: string) {
@@ -800,10 +829,39 @@ export function deleteOperationalCostType(costTypeId: number, managerPassword: s
   });
 }
 
-export function fetchOperationalCostEntries(entryDate: string, managerPassword: string) {
-  return apiRequest<OperationalCostEntry[]>(`/operational-costs/entries?entryDate=${encodeURIComponent(entryDate)}`, {
+export function fetchOperationalCostEntries(
+  filters: { entryDate?: string; start?: string; end?: string },
+  managerPassword: string,
+) {
+  const params = new URLSearchParams();
+  if (filters.entryDate) params.set("entryDate", filters.entryDate);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<OperationalCostEntry[]>(`/operational-costs/entries${suffix}`, {
     managerPassword,
   });
+}
+
+export async function exportOperationalCostEntries(
+  filters: { entryDate?: string; start?: string; end?: string },
+  managerPassword: string,
+) {
+  const params = new URLSearchParams();
+  if (filters.entryDate) params.set("entryDate", filters.entryDate);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE_URL}/operational-costs/entries/export${suffix}`, {
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+      "x-manager-password": managerPassword,
+    },
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.text());
+  }
+  return response.blob();
 }
 
 export function saveOperationalCostEntries(entryDate: string, items: Array<{ costTypeId: number; amount: number }>, managerPassword: string) {

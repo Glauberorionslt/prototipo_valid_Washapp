@@ -339,6 +339,7 @@ function AdminSistema() {
     const query = filterTerm.trim().toLowerCase();
     return rows.filter((item) => {
       const matchesText = !query || [
+        item.rowId,
         item.contractCode,
         item.companyName,
         item.fullName,
@@ -346,6 +347,10 @@ function AdminSistema() {
         item.keyToken,
         item.keyLabel,
         item.phone,
+        item.accessKeyStatus,
+        item.userStatus,
+        item.contractStatus,
+        item.isMaster ? "master" : "operador",
       ]
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));
@@ -373,7 +378,12 @@ function AdminSistema() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout
+      showSearch
+      searchValue={filterTerm}
+      onSearchChange={setFilterTerm}
+      searchPlaceholder="Buscar por empresa, email, contrato, telefone ou chave"
+    >
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
