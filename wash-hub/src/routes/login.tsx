@@ -90,7 +90,7 @@ function Login() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-primary shadow-glow">
               <Droplets className="h-7 w-7 text-primary-foreground" />
             </div>
-            <h1 className="mt-4 text-2xl font-bold tracking-tight">Wash App</h1>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight">Whashapp Auto</h1>
             <p className="text-sm text-muted-foreground">
               {recoverMode ? "Redefina sua senha usando a chave de acesso vinculada ao usuario" : createAccount ? "Crie sua conta para iniciar o prototipo" : "Entre na sua conta operacional"}
             </p>

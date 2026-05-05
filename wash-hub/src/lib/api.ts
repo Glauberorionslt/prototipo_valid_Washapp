@@ -248,15 +248,6 @@ export type OperationalCostEntry = {
   updatedAt: string;
 };
 
-export type AdminWhatsAppConfig = {
-  senderPhone: string | null;
-  connected: boolean;
-  registered: boolean;
-  qr: string | null;
-  detail: string | null;
-  linkMode: string | null;
-};
-
 async function readResponse(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
@@ -476,7 +467,6 @@ export function createOrder(payload: {
   total: number;
   items: Array<{ productId?: number | null; name: string; price: number; quantity: number }>;
   notes?: string | null;
-  sendWhatsapp?: boolean;
 }) {
   return apiRequest<Order>("/orders", {
     method: "POST",
@@ -512,12 +502,6 @@ export function deleteOrder(orderId: number, managerPassword: string) {
   });
 }
 
-export function notifyReady(orderId: number) {
-  return apiRequest<{ status: string; detail: string }>(`/orders/${orderId}/notify-ready`, {
-    method: "POST",
-  });
-}
-
 export function fetchFinanceReport(filters: { start?: string; end?: string; status?: string }) {
   const params = new URLSearchParams();
   if (filters.start) params.set("start", filters.start);
@@ -547,19 +531,6 @@ export async function exportFinanceReport(
   return response.blob();
 }
 
-export function sendFinanceWhatsapp(payload: {
-  phone: string;
-  start?: string;
-  end?: string;
-  status?: string;
-}, managerPassword: string) {
-  return apiRequest<{ status: string; detail: string }>("/finance/send-whatsapp", {
-    method: "POST",
-    managerPassword,
-    body: JSON.stringify(payload),
-  });
-}
-
 export function updateManagerProfile(payload: { fullName?: string; phone?: string }) {
   return apiRequest<{ status: string }>("/admin/manager-profile", {
     method: "PUT",
@@ -585,25 +556,6 @@ export function authorizeAdminOperational(payload: { managerPassword?: string; a
   return apiRequest<{ status: string; method: string }>("/auth/authorize-admin-operational", {
     method: "POST",
     body: JSON.stringify(payload),
-  });
-}
-
-export function fetchAdminWhatsappConfig() {
-  return apiRequest<AdminWhatsAppConfig>("/admin/whatsapp/config");
-}
-
-export function updateAdminWhatsappConfig(phone: string, managerPassword: string) {
-  return apiRequest<AdminWhatsAppConfig>("/admin/whatsapp/config", {
-    method: "PUT",
-    managerPassword,
-    body: JSON.stringify({ phone }),
-  });
-}
-
-export function relinkAdminWhatsapp(managerPassword: string) {
-  return apiRequest<AdminWhatsAppConfig>("/admin/whatsapp/relink", {
-    method: "POST",
-    managerPassword,
   });
 }
 
@@ -763,12 +715,6 @@ export async function exportSystemAccessKeys() {
   }
 
   return response.blob();
-}
-
-export function fetchWhatsappStatus() {
-  return apiRequest<{ connected: boolean; registered: boolean; lastQr?: string | null; detail?: string | null; linkMode?: string | null }>(
-    "/whatsapp/status",
-  );
 }
 
 export function listTeamMembers(managerPassword: string) {

@@ -1,44 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from random import choice
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
-from ..models import Customer, Order, OrderItem, WhatsAppLog
+from ..models import Customer, Order, OrderItem
 from ..schemas import OrderCreate, OrderItemOut, OrderOut, OrderUpdate
 from ..security import get_current_user, require_manager_password
-from ..whatsapp_client import send_text_message
 
 
 router = APIRouter()
-
-
-READY_MESSAGE_TEMPLATES = (
-    "Ola, {customer_name}!\n"
-    "Seu servico de lavagem {wash_type} ja foi finalizada.\n"
-    "Veiculo: {vehicle} | Placa: {plate}\n"
-    "Valor: {total}",
-    "Oi, {customer_name}!\n"
-    "A servico de lavagem {wash_type} esta pronto.\n"
-    "Veiculo: {vehicle} | Placa: {plate}\n"
-    "Valor total: {total}",
-    "Ola, {customer_name}!\n"
-    "Informamos que servico de lavagem {wash_type} esta pronto.\n"
-    "Veiculo: {vehicle} | Placa: {plate}\n"
-    "Valor: {total}",
-    "Oi, {customer_name}!\n"
-    "Seu servico de lavagem {wash_type} foi finalizado.\n"
-    "Veiculo: {vehicle} | Placa: {plate}\n"
-    "Valor a pagar: {total}",
-    "Ola, {customer_name}!\n"
-    "O servico de lavagem {wash_type} esta finalizado e disponivel.\n"
-    "Veiculo: {vehicle} | Placa: {plate}\n"
-    "Valor: {total}",
-)
 
 
 def _normalize_phone(phone: str | None) -> str | None:
@@ -119,16 +93,6 @@ def _enforce_status_rules(order: Order, new_status: str | None) -> None:
                             detail="Ordem pronta so pode seguir para entregue")
 
 
-def _build_ready_message(order: Order) -> str:
-    return choice(READY_MESSAGE_TEMPLATES).format(
-        customer_name=order.customer_name,
-        wash_type=order.wash_type,
-        vehicle=order.vehicle or "-",
-        plate=order.plate or "-",
-        total=f"R$ {float(order.total):.2f}",
-    )
-
-
 @router.get("", response_model=list[OrderOut])
 def list_orders(
     status_filter: str | None = Query(default=None, alias="status"),
@@ -207,24 +171,6 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: obje
     db.commit()
     order = db.scalar(select(Order).options(
         selectinload(Order.items)).where(Order.id == order.id))
-    if payload.sendWhatsapp and order and order.phone:
-        message = (
-            f"Ola, {order.customer_name}!\n"
-            f"Sua ordem #{order.id} foi registrada com sucesso.\n"
-            f"Valor previsto: R$ {float(order.total):.2f}"
-        )
-        result = send_text_message(order.phone, message)
-        db.add(
-            WhatsAppLog(
-                company_id=user.company_id,
-                order_id=order.id,
-                phone=order.phone,
-                message=message,
-                status="sent" if result.ok else "failed",
-                provider_message_id=result.provider_message_id,
-            )
-        )
-        db.commit()
     return _order_out(order)
 
 
@@ -278,22 +224,6 @@ def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_
                 )
             )
 
-    if new_status == "pronto" and order.phone and order.notified_ready_at is None:
-        message = _build_ready_message(order)
-        result = send_text_message(order.phone, message)
-        db.add(
-            WhatsAppLog(
-                company_id=user.company_id,
-                order_id=order.id,
-                phone=order.phone,
-                message=message,
-                status="sent" if result.ok else "failed",
-                provider_message_id=result.provider_message_id,
-            )
-        )
-        if result.ok:
-            order.notified_ready_at = datetime.utcnow()
-
     db.add(order)
     db.commit()
     db.refresh(order)
@@ -320,27 +250,8 @@ def delete_order(
 
 @router.post("/{order_id}/notify-ready")
 def notify_ready(order_id: int, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> dict:
-    order = db.scalar(select(Order).where(
-        Order.id == order_id, Order.company_id == user.company_id))
-    if order is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Ordem nao encontrada")
-    if not order.phone:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Ordem sem telefone")
-    result = send_text_message(order.phone, _build_ready_message(order))
-    db.add(
-        WhatsAppLog(
-            company_id=user.company_id,
-            order_id=order.id,
-            phone=order.phone,
-            message=_build_ready_message(order),
-            status="sent" if result.ok else "failed",
-            provider_message_id=result.provider_message_id,
-        )
+    _ = (order_id, db, user)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Funcionalidade de aviso foi desativada",
     )
-    if result.ok:
-        order.notified_ready_at = datetime.utcnow()
-    db.add(order)
-    db.commit()
-    return {"status": "ok", "detail": result.detail}

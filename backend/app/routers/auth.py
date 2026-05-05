@@ -49,7 +49,7 @@ def _user_to_current_user(user: User, db: Session) -> CurrentUserOut:
         role="System Admin" if user.is_master else "Admin Operacional",
         isMaster=user.is_master,
         managerPasswordConfigured=bool(user.manager_password_hash),
-        shop=user.company.name if user.company else "Wash App",
+        shop=user.company.name if user.company else "Whashapp Auto",
         contractCode=user.company.contract_code if user.company else None,
         contractStatus=user.company.contract_status if user.company else None,
         userStatus=user.user_status,
@@ -120,6 +120,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
 
     user.failed_attempts = 0
     user.locked_until = None
+    user.active_session_id = str(uuid.uuid4())
     db.add(user)
     db.commit()
 
@@ -129,7 +130,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
         not needs_key) and (not user.manager_password_hash)
 
     return LoginResponse(
-        access_token=create_access_token(str(user.id)),
+        access_token=create_access_token(str(user.id), user.active_session_id),
         needs_key=needs_key,
         needs_manager_password=needs_manager_password,
         is_master=user.is_master,
@@ -161,6 +162,7 @@ def bootstrap_master(
             full_name=payload.full_name,
             password_hash=hash_password(payload.password),
             is_master=True,
+            active_session_id=str(uuid.uuid4()),
             activated_at=datetime.utcnow(),
         )
         company = _create_company_for_user(db, email, payload.full_name)
@@ -190,6 +192,7 @@ def register(payload: BootstrapMasterRequest, db: Session = Depends(get_db)) -> 
         full_name=payload.full_name,
         password_hash=hash_password(payload.password),
         is_master=False,
+        active_session_id=str(uuid.uuid4()),
         company_id=_create_company_for_user(db, email, payload.full_name).id,
     )
     db.add(user)

@@ -16,7 +16,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Washapp V2 API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Whashapp Auto API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,7 +42,7 @@ app.include_router(whatsapp.router, prefix="/whatsapp", tags=["whatsapp"])
 
 @app.get("/")
 def root() -> dict:
-    return {"message": "Washapp V2 API"}
+    return {"message": "Whashapp Auto API"}
 
 
 @app.get("/health")

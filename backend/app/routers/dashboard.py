@@ -26,7 +26,7 @@ def _user_out(user: User) -> CurrentUserOut:
         role="System Admin" if user.is_master else "Admin Operacional",
         isMaster=user.is_master,
         managerPasswordConfigured=bool(user.manager_password_hash),
-        shop=user.company.name if user.company else "Wash App",
+        shop=user.company.name if user.company else "Whashapp Auto",
         contractCode=user.company.contract_code if user.company else None,
         contractStatus=user.company.contract_status if user.company else None,
         userStatus=user.user_status,

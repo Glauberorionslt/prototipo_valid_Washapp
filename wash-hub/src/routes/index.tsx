@@ -10,7 +10,6 @@ import {
   Send,
   ChevronDown,
   PlusCircle,
-  Phone,
   Calendar,
 } from "lucide-react";
 import { AppLayout } from "@/components/app/AppLayout";
@@ -23,7 +22,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { fetchDashboard, notifyReady, type DashboardPayload, type Order } from "@/lib/api";
+import { fetchDashboard, type DashboardPayload, type Order } from "@/lib/api";
 import { setSelectedOrderId } from "@/lib/selected-order";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
@@ -97,17 +96,6 @@ function Dashboard() {
     setMessage(
       `Pendencias: ${data.stats.waiting} aguardando, ${data.stats.washing} em lavagem, ${data.stats.ready} prontas para retirada.`,
     );
-  }
-
-  async function handleNotifyReady(orderId: number) {
-    setError(null);
-    setMessage(null);
-    try {
-      const response = await notifyReady(orderId);
-      setMessage(response.detail || "Cliente avisado com sucesso.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao enviar aviso pelo WhatsApp");
-    }
   }
 
   if (!data && !error) {
@@ -193,7 +181,6 @@ function Dashboard() {
               Icon={g.icon}
               orders={filteredOrders}
               onOpenOrder={handleOpenOrder}
-              onNotifyReady={handleNotifyReady}
             />
           ))}
         </div>
@@ -277,14 +264,12 @@ function OrderGroup({
   Icon,
   orders,
   onOpenOrder,
-  onNotifyReady,
 }: {
   groupKey: OrderStatus | "todas";
   label: string;
   Icon: typeof Car;
   orders: Order[];
   onOpenOrder: (orderId: number) => void;
-  onNotifyReady: (orderId: number) => Promise<void>;
 }) {
   const [open, setOpen] = useState(groupKey === "aguardando" || groupKey === "em_lavagem");
   const filteredOrders =
@@ -354,19 +339,6 @@ function OrderGroup({
                         R$ {o.total.toFixed(2)}
                       </span>
                       <StatusBadge status={o.status as OrderStatus} />
-                      {o.status === "pronto" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void onNotifyReady(o.id);
-                          }}
-                        >
-                          <Phone className="h-3.5 w-3.5" /> Avisar
-                        </Button>
-                      )}
                     </div>
                   </li>
                 ))}

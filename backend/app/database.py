@@ -41,6 +41,7 @@ def _apply_post_create_migrations() -> None:
     ddl_statements = [
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS user_status VARCHAR(20) DEFAULT 'active'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id VARCHAR(36)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE products ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE orders ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
@@ -94,6 +95,11 @@ def _apply_post_create_migrations() -> None:
             "UPDATE companies SET contract_status = 'active' WHERE contract_status IS NULL"))
         connection.execute(
             text("UPDATE users SET user_status = 'active' WHERE user_status IS NULL"))
+        connection.execute(
+            text(
+                "UPDATE users SET active_session_id = CONCAT('legacy-', id::text) WHERE active_session_id IS NULL"
+            )
+        )
 
         connection.execute(text("UPDATE users SET company_id = :company_id WHERE company_id IS NULL"), {
                            "company_id": company_id})

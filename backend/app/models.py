@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import Enum
+import uuid
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -88,6 +89,8 @@ class User(Base):
         String(255), nullable=True)
     manager_password_set_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True)
+    active_session_id: Mapped[str] = mapped_column(
+        String(36), default=lambda: str(uuid.uuid4()))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow)
 

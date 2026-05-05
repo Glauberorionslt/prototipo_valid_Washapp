@@ -11,10 +11,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import OperationalCostEntry, Order, TeamCostEntry, User, WhatsAppLog
+from ..models import OperationalCostEntry, Order, TeamCostEntry, User
 from ..schemas import FinanceReportOut, FinanceRowOut, FinanceSendWhatsappIn, FinanceSummaryOut
 from ..security import get_current_user, require_manager_password
-from ..whatsapp_client import send_text_message
 
 
 router = APIRouter()
@@ -138,32 +137,5 @@ def send_whatsapp_report(
     db: Session = Depends(get_db),
     user: User = Depends(require_manager_password),
 ) -> dict:
-    report_data = _report_out(
-        db,
-        user.company_id or 0,
-        _filtered_orders(db, user.company_id or 0,
-                         payload.start, payload.end, payload.status),
-        payload.start,
-        payload.end,
-    )
-    lines = [
-        "Relatorio Financeiro Washapp2",
-        f"Valor total: R$ {report_data.summary.totalAmount:.2f}",
-        f"Equipe: R$ {report_data.summary.teamCostTotal:.2f}",
-        f"Custos operacionais: R$ {report_data.summary.operationalCostTotal:.2f}",
-        f"Custo operacional: R$ {report_data.summary.netOperationalTotal:.2f}",
-        f"Ordens finalizadas: {report_data.summary.finalizedCount}",
-        f"Linhas consideradas: {len(report_data.rows)}",
-    ]
-    result = send_text_message(payload.phone, "\n".join(lines))
-    db.add(
-        WhatsAppLog(
-            company_id=user.company_id,
-            phone=payload.phone,
-            message="\n".join(lines),
-            status="sent" if result.ok else "failed",
-            provider_message_id=result.provider_message_id,
-        )
-    )
-    db.commit()
-    return {"status": "ok", "detail": result.detail}
+    _ = (payload, db, user)
+    return {"status": "disabled", "detail": "Envio por WhatsApp desativado neste ambiente"}

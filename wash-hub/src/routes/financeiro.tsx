@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, Send, DollarSign, ListChecks, Filter, ReceiptText, Briefcase, Calculator } from "lucide-react";
+import { ArrowLeft, Download, DollarSign, ListChecks, Filter, ReceiptText, Briefcase, Calculator } from "lucide-react";
 import { AppLayout } from "@/components/app/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge, type OrderStatus } from "@/components/app/StatusBadge";
-import { exportFinanceReport, fetchFinanceReport, sendFinanceWhatsapp, type FinanceReport } from "@/lib/api";
+import { exportFinanceReport, fetchFinanceReport, type FinanceReport } from "@/lib/api";
 import { useManagerPasswordDialog } from "@/components/app/ManagerPasswordDialog";
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
@@ -86,23 +86,6 @@ function Financeiro() {
       setMessage("Relatorio exportado.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao exportar relatorio");
-    }
-  }
-
-  async function handleSendWhatsapp() {
-    const managerPassword = await askManagerPassword("enviar relatorio por WhatsApp");
-    if (!managerPassword) {
-      return;
-    }
-    const phone = window.prompt("Numero para envio do resumo:");
-    if (!phone) {
-      return;
-    }
-    try {
-      await sendFinanceWhatsapp({ ...filters, phone }, managerPassword);
-      setMessage("Envio para WhatsApp solicitado.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao enviar relatorio");
     }
   }
 
@@ -226,7 +209,6 @@ function Financeiro() {
             <CardTitle className="text-base">Detalhamento</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4" /> Excel</Button>
-              <Button size="sm" className="bg-gradient-primary shadow-glow" onClick={handleSendWhatsapp}><Send className="h-4 w-4" /> WhatsApp</Button>
             </div>
           </CardHeader>
           <CardContent>

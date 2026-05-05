@@ -26,9 +26,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, session_id: str) -> str:
     expires_at = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
-    payload: dict[str, Any] = {"sub": subject, "exp": expires_at}
+    payload: dict[str, Any] = {"sub": subject, "sid": session_id, "exp": expires_at}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
@@ -59,11 +59,20 @@ def get_current_user(
     if not subject:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+    session_id = payload.get("sid")
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token session")
 
     user = db.scalar(select(User).where(User.id == int(subject)))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if user.active_session_id != session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessao encerrada por novo login em outro dispositivo",
+        )
     if user.user_status != UserStatus.ACTIVE.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Usuario inativo")

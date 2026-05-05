@@ -50,3 +50,26 @@ def test_login_blocks_user_with_inactive_access_key(client, user_factory):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Chave inativa"
+
+
+def test_login_invalidates_previous_device_session(client, user_factory):
+    user_factory(email="single-session@example.com", password="Senha123!", is_master=True, with_access_key=False)
+
+    first_login = client.post(
+        "/auth/login",
+        json={"email": "single-session@example.com", "password": "Senha123!"},
+    )
+    second_login = client.post(
+        "/auth/login",
+        json={"email": "single-session@example.com", "password": "Senha123!"},
+    )
+
+    first_token = first_login.json()["access_token"]
+    second_token = second_login.json()["access_token"]
+
+    first_me = client.get("/auth/me", headers={"Authorization": f"Bearer {first_token}"})
+    second_me = client.get("/auth/me", headers={"Authorization": f"Bearer {second_token}"})
+
+    assert first_me.status_code == 401
+    assert first_me.json()["detail"] == "Sessao encerrada por novo login em outro dispositivo"
+    assert second_me.status_code == 200

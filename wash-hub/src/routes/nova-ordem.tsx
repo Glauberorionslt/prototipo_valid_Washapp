@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Save,
-  Send,
   Plus,
   Trash2,
   User,
@@ -135,7 +134,7 @@ function NovaOrdem() {
     setSelectedProductId("");
   }
 
-  async function handleCreateOrder(sendWhatsapp: boolean) {
+  async function handleCreateOrder() {
     setMessage(null);
     setError(null);
     const validationError = validateOrderForm();
@@ -154,7 +153,6 @@ function NovaOrdem() {
         washType,
         basePrice: baseValue,
         total,
-        sendWhatsapp,
         items: items.map((item) => ({
           productId: item.id,
           name: item.name,
@@ -162,7 +160,7 @@ function NovaOrdem() {
           quantity: item.qty,
         })),
       });
-      setMessage(sendWhatsapp ? "Ordem criada e notificacao solicitada." : "Ordem criada com sucesso.");
+      setMessage("Ordem criada com sucesso.");
       setSelectedCustomerId("0");
       setCustomerSearch("");
       setSelectedProductId("");
@@ -373,11 +371,8 @@ function NovaOrdem() {
             </Card>
 
             <div className="space-y-3">
-              <Button className="w-full bg-gradient-primary shadow-glow hover:opacity-95" size="lg" onClick={() => handleCreateOrder(false)}>
+              <Button className="w-full bg-gradient-primary shadow-glow hover:opacity-95" size="lg" onClick={handleCreateOrder}>
                 <Save className="h-4 w-4" /> Salvar Ordem
-              </Button>
-              <Button variant="outline" className="w-full" size="lg" onClick={() => handleCreateOrder(true)}>
-                <Send className="h-4 w-4" /> Avisar Cliente (WhatsApp)
               </Button>
               <Button variant="ghost" className="w-full" asChild>
                 <Link to="/">Cancelar</Link>

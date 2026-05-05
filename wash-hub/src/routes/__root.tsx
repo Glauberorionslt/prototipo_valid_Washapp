@@ -29,10 +29,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Wash App — Gestão Premium para Lava-Rápido" },
+      { title: "Whashapp Auto — Gestão Premium para Lava-Rápido" },
       { name: "description", content: "Sistema completo para gestão de lava-rápido: ordens, clientes, produtos e financeiro em uma plataforma moderna." },
-      { name: "author", content: "Wash App" },
-      { property: "og:title", content: "Wash App — Gestão Premium para Lava-Rápido" },
+      { name: "author", content: "Whashapp Auto" },
+      { property: "og:title", content: "Whashapp Auto — Gestão Premium para Lava-Rápido" },
       { property: "og:description", content: "Centralize sua operação com elegância e eficiência." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
