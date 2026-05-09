@@ -18,6 +18,7 @@ def _product_out(product: Product) -> ProductOut:
         id=product.id,
         name=product.name,
         price=float(product.price),
+        kind=product.product_kind,
         isActive=product.is_active,
         createdAt=product.created_at,
     )
@@ -26,6 +27,7 @@ def _product_out(product: Product) -> ProductOut:
 @router.get("", response_model=list[ProductOut])
 def list_products(
     q: str | None = Query(default=None),
+    kind: str | None = Query(default=None),
     db: Session = Depends(get_db),
     user: object = Depends(get_current_user),
 ) -> list[ProductOut]:
@@ -33,6 +35,8 @@ def list_products(
         return []
     stmt = select(Product).order_by(Product.name)
     stmt = stmt.where(Product.company_id == user.company_id)
+    if kind:
+        stmt = stmt.where(Product.product_kind == kind)
     if q:
         stmt = stmt.where(Product.name.ilike(f"%{q.strip()}%"))
     products = db.scalars(stmt).all()
@@ -45,7 +49,7 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db), user: 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Usuario sem empresa vinculada")
     product = Product(company_id=user.company_id,
-                      name=payload.name.strip(), price=payload.price)
+                      name=payload.name.strip(), price=payload.price, product_kind=payload.kind)
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -67,6 +71,8 @@ def update_product(
     for field, value in payload.model_dump(exclude_unset=True).items():
         if field == "isActive":
             product.is_active = bool(value)
+        elif field == "kind":
+            product.product_kind = value
         else:
             setattr(product, field, value)
     db.add(product)

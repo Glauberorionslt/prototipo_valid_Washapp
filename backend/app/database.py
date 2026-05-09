@@ -44,6 +44,7 @@ def _apply_post_create_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id VARCHAR(36)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE products ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS product_kind VARCHAR(20) DEFAULT 'addon'",
         "ALTER TABLE orders ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE whatsapp_logs ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE companies ADD COLUMN IF NOT EXISTS contract_code VARCHAR(50)",
@@ -107,9 +108,27 @@ def _apply_post_create_migrations() -> None:
                            "company_id": company_id})
         connection.execute(text("UPDATE products SET company_id = :company_id WHERE company_id IS NULL"), {
                            "company_id": company_id})
+        connection.execute(text("UPDATE products SET product_kind = 'addon' WHERE product_kind IS NULL"))
         connection.execute(text("UPDATE orders SET company_id = :company_id WHERE company_id IS NULL"), {
                            "company_id": company_id})
         connection.execute(text("UPDATE whatsapp_logs SET company_id = :company_id WHERE company_id IS NULL"), {
                            "company_id": company_id})
         connection.execute(
             text("UPDATE team_cost_entries SET tip_amount = 0 WHERE tip_amount IS NULL"))
+        connection.execute(
+            text(
+                "INSERT INTO products (company_id, name, price, product_kind, is_active, created_at, updated_at) "
+                "SELECT companies.id, 'Lavagem Simples', 35, 'wash_type', TRUE, NOW(), NOW() "
+                "FROM companies "
+                "WHERE NOT EXISTS (SELECT 1 FROM products WHERE products.company_id = companies.id AND products.product_kind = 'wash_type')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO products (company_id, name, price, product_kind, is_active, created_at, updated_at) "
+                "SELECT companies.id, 'Lavagem Completa', 65, 'wash_type', TRUE, NOW(), NOW() "
+                "FROM companies "
+                "WHERE EXISTS (SELECT 1 FROM products WHERE products.company_id = companies.id AND products.product_kind = 'wash_type' AND products.name = 'Lavagem Simples') "
+                "AND NOT EXISTS (SELECT 1 FROM products WHERE products.company_id = companies.id AND products.product_kind = 'wash_type' AND products.name = 'Lavagem Completa')"
+            )
+        )

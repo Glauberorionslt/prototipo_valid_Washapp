@@ -156,6 +156,7 @@ class Product(Base):
         "companies.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     price: Mapped[float] = mapped_column(Numeric(10, 2))
+    product_kind: Mapped[str] = mapped_column(String(20), default="addon")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow)

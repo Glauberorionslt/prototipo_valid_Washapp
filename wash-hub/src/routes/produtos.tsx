@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Search, Plus, Pencil, Trash2, Package } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Search, Plus, Pencil, Trash2, Package, Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/app/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ function Produtos() {
   const { askManagerPassword, dialog } = useManagerPasswordDialog();
   const [q, setQ] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
-  const [form, setForm] = useState({ name: "", price: "" });
+  const [form, setForm] = useState<{ name: string; price: string; kind: "addon" | "wash_type" }>({ name: "", price: "", kind: "addon" });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +33,8 @@ function Produtos() {
   }, [q]);
 
   const filtered = products.filter((product) => product.name.toLowerCase().includes(q.toLowerCase()));
+  const washTypes = useMemo(() => filtered.filter((product) => product.kind === "wash_type"), [filtered]);
+  const addons = useMemo(() => filtered.filter((product) => product.kind === "addon"), [filtered]);
 
   async function handleSave() {
     setError(null);
@@ -59,16 +61,16 @@ function Produtos() {
         if (!managerPassword) {
           return;
         }
-        const updated = await updateProduct(editingId, { name: form.name, price }, managerPassword);
+        const updated = await updateProduct(editingId, { name: form.name, price, kind: form.kind }, managerPassword);
         setProducts(products.map((product) => (product.id === updated.id ? updated : product)));
         setMessage("Produto atualizado.");
       } else {
-        const created = await createProduct({ name: form.name, price });
+        const created = await createProduct({ name: form.name, price, kind: form.kind });
         setProducts([created, ...products]);
         setMessage("Produto cadastrado.");
       }
 
-      setForm({ name: "", price: "" });
+      setForm({ name: "", price: "", kind: "addon" });
       setEditingId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar produto");
@@ -116,6 +118,16 @@ function Produtos() {
                 <Input className="mt-1.5" placeholder="Cera Premium" value={form.name} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} />
               </div>
               <div>
+                <Label>Categoria</Label>
+                <Select value={form.kind} onValueChange={(value: "addon" | "wash_type") => setForm((current) => ({ ...current, kind: value }))}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="addon">Produto/Serviço adicional</SelectItem>
+                    <SelectItem value="wash_type">Tipo de lavagem</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Preço (R$)</Label>
                 <Input className="mt-1.5" placeholder="0,00" type="number" value={form.price} onChange={(e) => setForm((current) => ({ ...current, price: e.target.value }))} />
               </div>
@@ -123,7 +135,7 @@ function Produtos() {
               {error && <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => {
-                  setForm({ name: "", price: "" });
+                  setForm({ name: "", price: "", kind: "addon" });
                   setEditingId(null);
                 }}>Cancelar</Button>
                 <Button className="bg-gradient-primary shadow-glow" onClick={handleSave}>
@@ -147,32 +159,79 @@ function Produtos() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto..." className="pl-9" />
               </div>
-              <div className="max-h-[480px] overflow-y-auto divide-y divide-border/60 rounded-lg border border-border/60">
-                {filtered.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between p-3 hover:bg-muted/40 transition-smooth">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Package className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">R$ {p.price.toFixed(2)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => {
-                        setEditingId(p.id);
-                        setForm({ name: p.name, price: String(p.price) });
-                      }}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                <CatalogSection
+                  title="Tipos de Lavagem"
+                  emptyText="Nenhum tipo de lavagem cadastrado."
+                  icon={<Sparkles className="h-4 w-4" />}
+                  products={washTypes}
+                  onEdit={(p) => {
+                    setEditingId(p.id);
+                    setForm({ name: p.name, price: String(p.price), kind: p.kind });
+                  }}
+                  onDelete={handleDelete}
+                />
+                <CatalogSection
+                  title="Produtos e Serviços Adicionais"
+                  emptyText="Nenhum produto adicional cadastrado."
+                  icon={<Package className="h-4 w-4" />}
+                  products={addons}
+                  onEdit={(p) => {
+                    setEditingId(p.id);
+                    setForm({ name: p.name, price: String(p.price), kind: p.kind });
+                  }}
+                  onDelete={handleDelete}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function CatalogSection({
+  title,
+  emptyText,
+  icon,
+  products,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  emptyText: string;
+  icon: React.ReactNode;
+  products: Product[];
+  onEdit: (product: Product) => void;
+  onDelete: (productId: number) => void;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <div className="max-h-[220px] overflow-y-auto divide-y divide-border/60 rounded-lg border border-border/60">
+        {products.map((p) => (
+          <div key={p.id} className="flex items-center justify-between p-3 transition-smooth hover:bg-muted/40">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                {icon}
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{p.name}</p>
+                <p className="text-xs text-muted-foreground">R$ {p.price.toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" onClick={() => onEdit(p)}><Pencil className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            </div>
+          </div>
+        ))}
+        {!products.length && <p className="p-4 text-sm text-muted-foreground">{emptyText}</p>}
+      </div>
+    </div>
   );
 }

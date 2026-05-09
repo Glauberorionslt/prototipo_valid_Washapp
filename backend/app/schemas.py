@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -108,6 +109,7 @@ class CustomerOut(CustomerBase):
 class ProductBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     price: float = Field(gt=0)
+    kind: Literal["addon", "wash_type"] = "addon"
 
 
 class ProductCreate(ProductBase):
@@ -117,6 +119,7 @@ class ProductCreate(ProductBase):
 class ProductUpdate(BaseModel):
     name: str | None = None
     price: float | None = Field(default=None, gt=0)
+    kind: Literal["addon", "wash_type"] | None = None
     isActive: bool | None = None
 
 

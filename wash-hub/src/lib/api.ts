@@ -145,6 +145,7 @@ export type Product = {
   id: number;
   name: string;
   price: number;
+  kind: "addon" | "wash_type";
   isActive: boolean;
   createdAt: string;
 };
@@ -412,12 +413,15 @@ export function deleteCustomer(customerId: number) {
   });
 }
 
-export function listProducts(query?: string) {
-  const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
+export function listProducts(query?: string, kind?: "addon" | "wash_type") {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (kind) params.set("kind", kind);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
   return apiRequest<Product[]>(`/products${suffix}`);
 }
 
-export function createProduct(payload: { name: string; price: number }) {
+export function createProduct(payload: { name: string; price: number; kind: "addon" | "wash_type" }) {
   return apiRequest<Product>("/products", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -426,7 +430,7 @@ export function createProduct(payload: { name: string; price: number }) {
 
 export function updateProduct(
   productId: number,
-  payload: { name?: string; price?: number; isActive?: boolean },
+  payload: { name?: string; price?: number; kind?: "addon" | "wash_type"; isActive?: boolean },
   managerPassword: string,
 ) {
   return apiRequest<Product>(`/products/${productId}`, {

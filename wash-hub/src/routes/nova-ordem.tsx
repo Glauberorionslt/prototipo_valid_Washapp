@@ -28,10 +28,11 @@ export const Route = createFileRoute("/nova-ordem")({ component: NovaOrdem });
 function NovaOrdem() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [washTypes, setWashTypes] = useState<Product[]>([]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("0");
   const [selectedProductId, setSelectedProductId] = useState("");
-  const [washType, setWashType] = useState("completa");
+  const [selectedWashTypeId, setSelectedWashTypeId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicle, setVehicle] = useState("");
@@ -43,8 +44,17 @@ function NovaOrdem() {
 
   useEffect(() => {
     listCustomers().then(setCustomers).catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar clientes"));
-    listProducts().then(setProducts).catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar produtos"));
+    listProducts(undefined, "addon").then(setProducts).catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar produtos"));
+    listProducts(undefined, "wash_type").then(setWashTypes).catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar tipos de lavagem"));
   }, []);
+
+  useEffect(() => {
+    if (!washTypes.length) {
+      setSelectedWashTypeId("");
+      return;
+    }
+    setSelectedWashTypeId((current) => current && washTypes.some((item) => String(item.id) === current) ? current : String(washTypes[0].id));
+  }, [washTypes]);
 
   const selectedCustomer = useMemo(
     () => customers.find((customer) => String(customer.id) === selectedCustomerId),
@@ -111,10 +121,17 @@ function NovaOrdem() {
     if (!color.trim()) {
       return "Informe a cor do veiculo.";
     }
+    if (!selectedWashType) {
+      return "Cadastre e selecione um tipo de lavagem.";
+    }
     return null;
   }
 
-  const baseValue = washType === "simples" ? 35 : 65;
+  const selectedWashType = useMemo(
+    () => washTypes.find((product) => String(product.id) === selectedWashTypeId) ?? null,
+    [washTypes, selectedWashTypeId],
+  );
+  const baseValue = selectedWashType?.price ?? 0;
   const total = baseValue + items.reduce((s, i) => s + i.price * i.qty, 0);
 
   function addSelectedProduct() {
@@ -150,7 +167,7 @@ function NovaOrdem() {
         vehicle,
         plate: sanitizePlate(plate),
         color,
-        washType,
+        washType: selectedWashType?.name ?? "",
         basePrice: baseValue,
         total,
         items: items.map((item) => ({
@@ -170,7 +187,7 @@ function NovaOrdem() {
       setPlate("");
       setColor("");
       setItems([]);
-      setWashType("completa");
+      setSelectedWashTypeId(washTypes[0] ? String(washTypes[0].id) : "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao criar ordem");
     }
@@ -295,13 +312,15 @@ function NovaOrdem() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <Label>Tipo de Lavagem</Label>
-                    <Select value={washType} onValueChange={setWashType}>
+                    <Select value={selectedWashTypeId} onValueChange={setSelectedWashTypeId}>
                       <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="simples">Lavagem Simples — R$ 35,00</SelectItem>
-                        <SelectItem value="completa">Lavagem Completa — R$ 65,00</SelectItem>
+                        {washTypes.map((washType) => (
+                          <SelectItem key={washType.id} value={String(washType.id)}>{washType.name} — R$ {washType.price.toFixed(2)}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                    {!washTypes.length && <p className="mt-2 text-xs text-muted-foreground">Cadastre tipos de lavagem na tela de produtos.</p>}
                   </div>
                   <div>
                     <Label>Adicionar Produto/Serviço</Label>
