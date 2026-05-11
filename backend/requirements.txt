@@ -10,5 +10,6 @@ pandas
 openpyxl
 PyJWT
 requests
+python-multipart
 pytest
 httpx

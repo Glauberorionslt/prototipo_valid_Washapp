@@ -46,6 +46,7 @@ def _apply_post_create_migrations() -> None:
         "ALTER TABLE products ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE products ADD COLUMN IF NOT EXISTS product_kind VARCHAR(20) DEFAULT 'addon'",
         "ALTER TABLE orders ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE whatsapp_logs ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id)",
         "ALTER TABLE companies ADD COLUMN IF NOT EXISTS contract_code VARCHAR(50)",
         "ALTER TABLE companies ADD COLUMN IF NOT EXISTS contract_status VARCHAR(20) DEFAULT 'active'",
@@ -111,6 +112,11 @@ def _apply_post_create_migrations() -> None:
         connection.execute(text("UPDATE products SET product_kind = 'addon' WHERE product_kind IS NULL"))
         connection.execute(text("UPDATE orders SET company_id = :company_id WHERE company_id IS NULL"), {
                            "company_id": company_id})
+        connection.execute(
+            text(
+                "UPDATE orders SET delivered_at = updated_at WHERE status = 'entregue' AND delivered_at IS NULL"
+            )
+        )
         connection.execute(text("UPDATE whatsapp_logs SET company_id = :company_id WHERE company_id IS NULL"), {
                            "company_id": company_id})
         connection.execute(

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { ArrowLeft, Download, DollarSign, ListChecks, Filter, ReceiptText, Briefcase, Calculator } from "lucide-react";
 import { AppLayout } from "@/components/app/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,12 @@ export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 const FINANCE_FILTERS_STORAGE_KEY = "washapp2.finance.filters";
 
 function getDefaultFilters() {
-  return { start: "2025-04-01", end: "2025-04-24", status: "all" };
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return { start: `${year}-${month}-01`, end: `${year}-${month}-${day}`, status: "all" };
 }
 
 function readStoredFilters() {
@@ -69,6 +75,13 @@ function Financeiro() {
 
   const finalizedCount = report?.summary.finalizedCount ?? 0;
   const total = report?.summary.totalAmount ?? 0;
+
+  function formatDateTime(value?: string | null) {
+    if (!value) {
+      return "-";
+    }
+    return format(new Date(value), "dd/MM/yyyy HH:mm");
+  }
 
   async function handleExport() {
     const managerPassword = await askManagerPassword("exportar relatorio");
@@ -221,6 +234,8 @@ function Financeiro() {
                     <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">ID</th>
                     <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cliente</th>
                     <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Veículo</th>
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Criada em</th>
+                    <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Finalizada em</th>
                     <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                     <th className="p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Valor</th>
                   </tr>
@@ -231,6 +246,8 @@ function Financeiro() {
                       <td className="p-3 font-mono text-xs">#{o.id}</td>
                       <td className="p-3 font-medium">{o.customerName}</td>
                       <td className="p-3 text-muted-foreground">{o.vehicle} • {o.plate}</td>
+                      <td className="p-3 text-muted-foreground">{formatDateTime(o.createdAt)}</td>
+                      <td className="p-3 text-muted-foreground">{formatDateTime(o.deliveredAt)}</td>
                       <td className="p-3"><StatusBadge status={o.status as OrderStatus} /></td>
                       <td className="p-3 text-right font-semibold">R$ {o.total.toFixed(2)}</td>
                     </tr>

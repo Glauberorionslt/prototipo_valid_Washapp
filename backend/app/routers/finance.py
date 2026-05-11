@@ -14,14 +14,15 @@ from ..database import get_db
 from ..models import OperationalCostEntry, Order, TeamCostEntry, User
 from ..schemas import FinanceReportOut, FinanceRowOut, FinanceSendWhatsappIn, FinanceSummaryOut
 from ..security import get_current_user, require_manager_password
+from ..time_utils import local_day_bounds
 
 
 router = APIRouter()
 
 
 def _range_bounds(start: date | None, end: date | None) -> tuple[datetime | None, datetime | None]:
-    start_dt = datetime.combine(start, time.min) if start else None
-    end_dt = datetime.combine(end, time.max) if end else None
+    start_dt = local_day_bounds(start)[0] if start else None
+    end_dt = local_day_bounds(end)[1] if end else None
     return start_dt, end_dt
 
 
@@ -82,6 +83,7 @@ def _report_out(db: Session, company_id: int, orders: list[Order], start: date |
                 status=order.status,
                 total=float(order.total),
                 createdAt=order.created_at,
+                deliveredAt=order.delivered_at,
             )
             for order in orders
         ],
@@ -120,7 +122,8 @@ def export_excel(
             "Placa": order.plate,
             "Status": order.status,
             "Valor": float(order.total),
-            "Data": order.created_at.strftime("%d/%m/%Y %H:%M"),
+            "Data Criacao": order.created_at.strftime("%d/%m/%Y %H:%M"),
+            "Data Finalizacao": order.delivered_at.strftime("%d/%m/%Y %H:%M") if order.delivered_at else "",
         }
         for order in orders
     ]

@@ -51,3 +51,30 @@ def test_finance_report_excludes_tips_from_team_cost_total(client, auth_headers,
     assert summary["teamCostTotal"] == 40.0
     assert summary["operationalCostTotal"] == 20.0
     assert summary["netOperationalTotal"] == 90.0
+
+
+def test_finance_report_includes_created_and_delivered_dates(client, auth_headers, db_session):
+    delivered_at = datetime.utcnow()
+    order = Order(
+        company_id=1,
+        customer_name="Cliente Analitico",
+        phone="11999999999",
+        vehicle="Corolla",
+        plate="FIN4321",
+        color="Branco",
+        wash_type="simples",
+        base_price=50,
+        total=70,
+        status=OrderStatus.ENTREGUE.value,
+        created_at=datetime(2026, 5, 10, 9, 30),
+        delivered_at=delivered_at,
+    )
+    db_session.add(order)
+    db_session.commit()
+
+    response = client.get("/finance/report", headers=auth_headers)
+
+    assert response.status_code == 200
+    row = response.json()["rows"][0]
+    assert row["createdAt"].startswith("2026-05-10T09:30:00")
+    assert row["deliveredAt"] is not None

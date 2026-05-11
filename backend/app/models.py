@@ -8,6 +8,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, St
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+from .time_utils import now_local
 
 
 class OrderStatus(str, Enum):
@@ -46,9 +47,9 @@ class Company(Base):
     whatsapp_sender_phone: Mapped[str | None] = mapped_column(
         String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     users: Mapped[list["User"]] = relationship(back_populates="company")
     customers: Mapped[list["Customer"]] = relationship(
@@ -92,7 +93,7 @@ class User(Base):
     active_session_id: Mapped[str] = mapped_column(
         String(36), default=lambda: str(uuid.uuid4()))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
 
     company: Mapped["Company | None"] = relationship(back_populates="users")
     access_key: Mapped["AccessKey | None"] = relationship(
@@ -113,7 +114,7 @@ class AccessKey(Base):
     used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
 
 
 class AppSetting(Base):
@@ -140,9 +141,9 @@ class Customer(Base):
     color: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     company: Mapped[Company] = relationship(back_populates="customers")
     orders: Mapped[list["Order"]] = relationship(back_populates="customer")
@@ -159,9 +160,9 @@ class Product(Base):
     product_kind: Mapped[str] = mapped_column(String(20), default="addon")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     company: Mapped[Company] = relationship(back_populates="products")
 
@@ -187,10 +188,12 @@ class Order(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     notified_ready_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, index=True)
+        DateTime(timezone=True), default=now_local, index=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     company: Mapped[Company] = relationship(back_populates="orders")
     customer: Mapped[Customer | None] = relationship(back_populates="orders")
@@ -210,7 +213,7 @@ class OrderItem(Base):
     price: Mapped[float] = mapped_column(Numeric(10, 2))
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
 
     order: Mapped[Order] = relationship(back_populates="items")
 
@@ -244,9 +247,9 @@ class TeamMember(Base):
     name: Mapped[str] = mapped_column(String(255), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     company: Mapped[Company] = relationship(back_populates="team_members")
     entries: Mapped[list["TeamCostEntry"]] = relationship(
@@ -265,9 +268,9 @@ class TeamCostEntry(Base):
     amount: Mapped[float] = mapped_column(Numeric(10, 2))
     tip_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     company: Mapped[Company] = relationship(back_populates="team_cost_entries")
     member: Mapped[TeamMember] = relationship(back_populates="entries")
@@ -284,9 +287,9 @@ class OperationalCostType(Base):
     name: Mapped[str] = mapped_column(String(255), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
 
     company: Mapped[Company] = relationship(
         back_populates="operational_cost_types")
@@ -305,7 +308,7 @@ class OperationalCostEntry(Base):
     entry_date: Mapped[date] = mapped_column(Date, index=True)
     amount: Mapped[float] = mapped_column(Numeric(10, 2))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow)
+        DateTime(timezone=True), default=now_local)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 

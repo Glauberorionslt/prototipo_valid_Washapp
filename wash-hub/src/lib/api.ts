@@ -141,6 +141,13 @@ export type Customer = {
   createdAt: string;
 };
 
+export type PlateReaderScan = {
+  plate: string;
+  confidence: number | null;
+  customer: Customer | null;
+  reservedOrderId: number | null;
+};
+
 export type Product = {
   id: number;
   name: string;
@@ -171,6 +178,7 @@ export type Order = {
   total: number;
   status: "aguardando" | "em_lavagem" | "pronto" | "entregue";
   notes: string | null;
+  deliveredAt?: string | null;
   createdAt: string;
   items: OrderItem[];
 };
@@ -210,6 +218,7 @@ export type FinanceReport = {
     status: string;
     total: number;
     createdAt: string;
+    deliveredAt: string | null;
   }>;
 };
 
@@ -297,7 +306,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   const headers = new Headers(options.headers ?? {});
   headers.set("Accept", "application/json");
 
-  if (options.body && !headers.has("Content-Type")) {
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -466,6 +475,7 @@ export function createOrder(payload: {
   vehicle?: string | null;
   plate?: string | null;
   color?: string | null;
+  reservedOrderId?: number | null;
   washType: string;
   basePrice: number;
   total: number;
@@ -476,6 +486,10 @@ export function createOrder(payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function reserveNextOrderId() {
+  return apiRequest<{ reservedOrderId: number }>("/orders/reserve-next-id");
 }
 
 export function updateOrder(

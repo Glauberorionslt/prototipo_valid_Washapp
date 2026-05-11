@@ -2,14 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+import json
+
+import requests
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session, selectinload
 
+from ..config import settings
 from ..database import get_db
 from ..models import Customer, Order, OrderItem
-from ..schemas import OrderCreate, OrderItemOut, OrderOut, OrderUpdate
+from ..schemas import CustomerOut, OrderCreate, OrderItemOut, OrderOut, OrderUpdate, PlateReaderScanOut, ReservedOrderIdOut
 from ..security import get_current_user, require_manager_password
+from ..time_utils import now_local
 
 
 router = APIRouter()
@@ -43,6 +48,7 @@ def _order_out(order: Order) -> OrderOut:
         total=float(order.total),
         status=order.status,
         notes=order.notes,
+        deliveredAt=order.delivered_at,
         createdAt=order.created_at,
         items=[
             OrderItemOut(
@@ -55,6 +61,37 @@ def _order_out(order: Order) -> OrderOut:
             for item in order.items
         ],
     )
+
+
+def _customer_out(customer: Customer) -> CustomerOut:
+    return CustomerOut(
+        id=customer.id,
+        name=customer.name,
+        phone=customer.phone,
+        vehicle=customer.vehicle,
+        plate=customer.plate,
+        color=customer.color,
+        isDefault=customer.is_default,
+        createdAt=customer.created_at,
+    )
+
+
+def _find_customer_by_plate(db: Session, company_id: int, plate: str) -> Customer | None:
+    customers = db.scalars(select(Customer).where(Customer.company_id == company_id).order_by(Customer.created_at.desc())).all()
+    for customer in customers:
+        if _normalize_plate(customer.plate) == plate:
+            return customer
+    return None
+
+
+def _reserve_next_order_id(db: Session) -> int:
+    bind = db.get_bind()
+    dialect_name = bind.dialect.name if bind is not None else ""
+    if dialect_name == "postgresql":
+        next_id = db.execute(text("SELECT nextval(pg_get_serial_sequence('orders', 'id'))")).scalar_one()
+        return int(next_id)
+    max_id = db.scalar(select(func.max(Order.id))) or 0
+    return int(max_id) + 1
 
 
 def _apply_customer_snapshot(order: Order, customer: Customer | None, payload: OrderCreate | OrderUpdate) -> None:
@@ -120,6 +157,13 @@ def list_orders(
     return [_order_out(order) for order in orders]
 
 
+@router.get("/reserve-next-id", response_model=ReservedOrderIdOut)
+def reserve_next_order_id(db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> ReservedOrderIdOut:
+    if user.company_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario sem empresa vinculada")
+    return ReservedOrderIdOut(reservedOrderId=_reserve_next_order_id(db))
+
+
 @router.get("/{order_id}", response_model=OrderOut)
 def get_order(order_id: int, db: Session = Depends(get_db), user: object = Depends(get_current_user)) -> OrderOut:
     order = db.scalar(select(Order).options(selectinload(Order.items)).where(
@@ -155,6 +199,8 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: obje
         status="aguardando",
         notes=payload.notes,
     )
+    if payload.reservedOrderId is not None:
+        order.id = payload.reservedOrderId
     db.add(order)
     db.flush()
 
@@ -172,6 +218,77 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), user: obje
     order = db.scalar(select(Order).options(
         selectinload(Order.items)).where(Order.id == order.id))
     return _order_out(order)
+
+
+@router.post("/plate-reader/scan", response_model=PlateReaderScanOut)
+def scan_plate_and_lookup_customer(
+    upload: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: object = Depends(get_current_user),
+) -> PlateReaderScanOut:
+    if user.company_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario sem empresa vinculada")
+    if not settings.plate_recognizer_token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Leitor de placa indisponivel. Configure a variavel PLATE_RECOGNIZER_TOKEN.",
+        )
+
+    file_bytes = upload.file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie uma imagem para leitura da placa")
+
+    files = {
+        "upload": (
+            upload.filename or "plate.jpg",
+            file_bytes,
+            upload.content_type or "application/octet-stream",
+        )
+    }
+    data: dict[str, str] = {}
+    if settings.plate_recognizer_region:
+        data["region"] = settings.plate_recognizer_region
+    else:
+        data["config"] = json.dumps({"mode": "fast"})
+
+    try:
+        response = requests.post(
+            settings.plate_recognizer_api_url,
+            headers={"Authorization": f"Token {settings.plate_recognizer_token}"},
+            files=files,
+            data=data,
+            timeout=settings.plate_recognizer_timeout_seconds,
+        )
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Falha ao consultar o leitor de placa: {exc}",
+        ) from exc
+
+    if not response.ok:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Falha ao consultar o leitor de placa",
+        )
+
+    payload = response.json()
+    results = payload.get("results") or []
+    if not results:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma placa foi reconhecida na imagem")
+
+    top_result = max(results, key=lambda item: item.get("confidence", 0))
+    plate = _normalize_plate(top_result.get("plate"))
+    if not plate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma placa valida foi reconhecida na imagem")
+
+    customer = _find_customer_by_plate(db, user.company_id, plate)
+    reserved_order_id = None if customer else _reserve_next_order_id(db)
+    return PlateReaderScanOut(
+        plate=plate,
+        confidence=top_result.get("confidence"),
+        customer=_customer_out(customer) if customer else None,
+        reservedOrderId=reserved_order_id,
+    )
 
 
 @router.put("/{order_id}", response_model=OrderOut)
@@ -210,6 +327,9 @@ def update_order(order_id: int, payload: OrderUpdate, db: Session = Depends(get_
         elif field == "plate":
             value = _normalize_plate(value)
         setattr(order, mapping[field], value)
+
+    if new_status == "entregue" and order.delivered_at is None:
+        order.delivered_at = now_local()
 
     if payload.items is not None and order.status not in {"pronto", "entregue"}:
         order.items.clear()

@@ -149,6 +149,7 @@ class OrderCreate(BaseModel):
     vehicle: str | None = None
     plate: str | None = None
     color: str | None = None
+    reservedOrderId: int | None = None
     washType: str
     basePrice: float = Field(ge=0)
     total: float = Field(ge=0)
@@ -184,8 +185,20 @@ class OrderOut(BaseModel):
     total: float
     status: str
     notes: str | None
+    deliveredAt: datetime | None = None
     createdAt: datetime
     items: list[OrderItemOut]
+
+
+class ReservedOrderIdOut(BaseModel):
+    reservedOrderId: int
+
+
+class PlateReaderScanOut(BaseModel):
+    plate: str
+    confidence: float | None = None
+    customer: CustomerOut | None = None
+    reservedOrderId: int | None = None
 
 
 class DashboardOut(BaseModel):
@@ -205,6 +218,7 @@ class FinanceRowOut(BaseModel):
     status: str
     total: float
     createdAt: datetime
+    deliveredAt: datetime | None = None
 
 
 class FinanceSummaryOut(BaseModel):

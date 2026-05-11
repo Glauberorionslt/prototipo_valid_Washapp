@@ -26,6 +26,10 @@ class Settings:
     cors_origins: list[str]
     whatsapp_bridge_url: str | None
     whatsapp_timeout_seconds: int
+    plate_recognizer_token: str | None
+    plate_recognizer_api_url: str
+    plate_recognizer_region: str | None
+    plate_recognizer_timeout_seconds: int
 
 
 def _build_database_url() -> str:
@@ -54,4 +58,8 @@ settings = Settings(
     ),
     whatsapp_bridge_url=os.getenv("WHATSAPP_BRIDGE_URL") or None,
     whatsapp_timeout_seconds=int(os.getenv("WHATSAPP_TIMEOUT_SECONDS", "10")),
+    plate_recognizer_token=os.getenv("PLATE_RECOGNIZER_TOKEN") or None,
+    plate_recognizer_api_url=os.getenv("PLATE_RECOGNIZER_API_URL", "https://api.platerecognizer.com/v1/plate-reader/"),
+    plate_recognizer_region=os.getenv("PLATE_RECOGNIZER_REGION") or None,
+    plate_recognizer_timeout_seconds=int(os.getenv("PLATE_RECOGNIZER_TIMEOUT_SECONDS", "20")),
 )
