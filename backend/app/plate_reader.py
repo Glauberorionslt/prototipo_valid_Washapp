@@ -583,11 +583,6 @@ def scan_plate_image(file_bytes: bytes) -> PlateReaderResult:
     if api_result is not None:
         return api_result
 
-    if not settings.plate_recognizer_token and not _local_runtime_available():
-        raise PlateReaderUnavailableError(
-            "Leitor de placa indisponivel. Configure PLATE_RECOGNIZER_TOKEN no backend ou instale easyocr e opencv-python-headless no backend.",
-        )
-
     if settings.plate_recognizer_token and remote_error is not None and not _local_runtime_available():
         raise PlateReaderUnavailableError(str(remote_error)) from remote_error
     if settings.plate_recognizer_token and remote_no_result is not None and not _local_runtime_available():

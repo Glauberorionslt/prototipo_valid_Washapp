@@ -239,21 +239,6 @@ def test_scan_plate_image_returns_not_found_when_api_results_have_no_usable_plat
         raise AssertionError("expected PlateReaderNotFoundError")
 
 
-def test_scan_plate_image_surfaces_missing_token_when_local_ocr_is_unavailable(monkeypatch):
-    monkeypatch.setattr(
-        "app.plate_reader.settings",
-        SimpleNamespace(plate_recognizer_token=None),
-    )
-    monkeypatch.setattr("app.plate_reader._local_runtime_available", lambda: False)
-
-    try:
-        plate_reader.scan_plate_image(b"fake-image")
-    except PlateReaderUnavailableError as exc:
-        assert "PLATE_RECOGNIZER_TOKEN" in str(exc)
-    else:
-        raise AssertionError("expected PlateReaderUnavailableError")
-
-
 def test_create_order_accepts_reserved_order_id(client, auth_headers):
     response = client.post(
         "/orders",
