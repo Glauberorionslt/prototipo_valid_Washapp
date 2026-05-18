@@ -220,6 +220,25 @@ def test_scan_plate_image_returns_not_found_when_api_has_no_results_and_local_oc
         raise AssertionError("expected PlateReaderNotFoundError")
 
 
+def test_scan_plate_image_returns_not_found_when_api_results_have_no_usable_plate_and_local_ocr_is_unavailable(monkeypatch):
+    monkeypatch.setattr(
+        "app.plate_reader.settings",
+        SimpleNamespace(plate_recognizer_token="configured-token"),
+    )
+    monkeypatch.setattr(
+        "app.plate_reader._read_with_plate_recognizer",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(PlateRecognizerNoResultError("Nenhuma placa utilizavel foi identificada pelo Plate Recognizer na imagem enviada.")),
+    )
+    monkeypatch.setattr("app.plate_reader._local_runtime_available", lambda: False)
+
+    try:
+        plate_reader.scan_plate_image(b"fake-image")
+    except PlateReaderNotFoundError as exc:
+        assert "placa utilizavel" in str(exc)
+    else:
+        raise AssertionError("expected PlateReaderNotFoundError")
+
+
 def test_create_order_accepts_reserved_order_id(client, auth_headers):
     response = client.post(
         "/orders",

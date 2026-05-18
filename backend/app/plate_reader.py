@@ -196,7 +196,10 @@ def _read_with_plate_recognizer(file_bytes: bytes) -> PlateReaderResult | None:
             best_result.plate,
             f"{best_result.confidence:.2f}" if best_result.confidence is not None else "n/a",
         )
-    return best_result
+        return best_result
+
+    logger.info("Plate Recognizer returned results without a usable plate candidate")
+    raise PlateRecognizerNoResultError("Nenhuma placa utilizavel foi identificada pelo Plate Recognizer na imagem enviada.")
 
 
 def _local_runtime_available() -> bool:
