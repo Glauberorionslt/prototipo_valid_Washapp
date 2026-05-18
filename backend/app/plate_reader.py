@@ -51,6 +51,10 @@ class PlateRecognizerRemoteError(RuntimeError):
     pass
 
 
+class PlateRecognizerNoResultError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class PlateReaderResult:
     plate: str
@@ -173,8 +177,8 @@ def _read_with_plate_recognizer(file_bytes: bytes) -> PlateReaderResult | None:
 
     results = payload.get("results")
     if not isinstance(results, list) or not results:
-        logger.info("Plate Recognizer returned no results; falling back to local OCR")
-        return None
+        logger.info("Plate Recognizer returned no results")
+        raise PlateRecognizerNoResultError("Nenhuma placa foi identificada pelo Plate Recognizer na imagem enviada.")
 
     best_result: PlateReaderResult | None = None
     for result in results:
@@ -564,16 +568,22 @@ def scan_plate_image(file_bytes: bytes) -> PlateReaderResult:
 
     logger.info("Plate scan started with %s bytes", len(file_bytes))
     remote_error: PlateRecognizerRemoteError | None = None
+    remote_no_result: PlateRecognizerNoResultError | None = None
     try:
         api_result = _read_with_plate_recognizer(file_bytes)
     except PlateRecognizerRemoteError as exc:
         remote_error = exc
+        api_result = None
+    except PlateRecognizerNoResultError as exc:
+        remote_no_result = exc
         api_result = None
     if api_result is not None:
         return api_result
 
     if settings.plate_recognizer_token and remote_error is not None and not _local_runtime_available():
         raise PlateReaderUnavailableError(str(remote_error)) from remote_error
+    if settings.plate_recognizer_token and remote_no_result is not None and not _local_runtime_available():
+        raise PlateReaderNotFoundError(str(remote_no_result)) from remote_no_result
 
     image = _decode_image(file_bytes)
     _get_ocr()

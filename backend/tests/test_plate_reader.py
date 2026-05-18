@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from app.models import Customer
 from app import plate_reader
-from app.plate_reader import PlateReaderNotFoundError, PlateReaderResult, PlateReaderUnavailableError, PlateRecognizerRemoteError
+from app.plate_reader import PlateReaderNotFoundError, PlateReaderResult, PlateReaderUnavailableError, PlateRecognizerNoResultError, PlateRecognizerRemoteError
 from app.plate_reader_quota import PLATE_READER_MONTHLY_POOL
 
 
@@ -198,6 +198,26 @@ def test_scan_plate_image_surfaces_remote_error_when_local_ocr_is_unavailable(mo
         assert "Invalid token" in str(exc)
     else:
         raise AssertionError("expected PlateReaderUnavailableError")
+
+
+def test_scan_plate_image_returns_not_found_when_api_has_no_results_and_local_ocr_is_unavailable(monkeypatch):
+    monkeypatch.setattr(
+        "app.plate_reader.settings",
+        SimpleNamespace(plate_recognizer_token="configured-token"),
+    )
+    monkeypatch.setattr(
+        "app.plate_reader._read_with_plate_recognizer",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(PlateRecognizerNoResultError("Nenhuma placa foi identificada pelo Plate Recognizer na imagem enviada.")),
+    )
+    monkeypatch.setattr("app.plate_reader._local_runtime_available", lambda: False)
+
+    try:
+        plate_reader.scan_plate_image(b"fake-image")
+    except PlateReaderNotFoundError as exc:
+        assert "Plate Recognizer" in str(exc)
+        assert "Nenhuma placa" in str(exc)
+    else:
+        raise AssertionError("expected PlateReaderNotFoundError")
 
 
 def test_create_order_accepts_reserved_order_id(client, auth_headers):
