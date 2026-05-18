@@ -57,6 +57,13 @@ function getRowDisplayName(row: AdminSystemRow) {
   return row.keyLabel || "Chave avulsa";
 }
 
+function getQuotaLabel(row: AdminSystemRow) {
+  if (row.plateReaderQuotaRemaining === null || row.plateReaderQuotaLimit === null) {
+    return row.rowType === "user" ? "Sem chave ativa" : "Nao se aplica";
+  }
+  return `${row.plateReaderQuotaRemaining} disponiveis de ${row.plateReaderQuotaLimit} no mes`;
+}
+
 function isRowFullyActive(row: AdminSystemRow) {
   return row.contractStatus === "active"
     && row.userStatus === "active"
@@ -574,6 +581,11 @@ function AdminSistema() {
                               </p>
                             </div>
                             <div className="hidden flex-wrap items-center justify-end gap-2 lg:flex">
+                              {item.rowType === "user" && item.plateReaderLowQuotaWarning ? (
+                                <Badge className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50">
+                                  Ultimas {item.plateReaderQuotaRemaining} leituras
+                                </Badge>
+                              ) : null}
                               {renderStatusBadge(item.accessKeyStatus, { active: "Chave ativa", inactive: "Chave inativa", empty: "Sem chave" })}
                               {renderStatusBadge(item.userStatus, { active: "Usuario ativo", inactive: "Usuario inativo", empty: "Sem usuario" })}
                               {renderStatusBadge(item.contractStatus, { active: "Contrato ativo", inactive: "Contrato inativo", empty: "Sem contrato" })}
@@ -600,6 +612,10 @@ function AdminSistema() {
                                 <div>
                                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Rotulo da chave</p>
                                   <p className="text-sm font-medium text-foreground">{item.keyLabel || "Sem rotulo"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Leitor de placas</p>
+                                  <p className="text-sm font-medium text-foreground">{getQuotaLabel(item)}</p>
                                 </div>
                                 <div>
                                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Chave</p>

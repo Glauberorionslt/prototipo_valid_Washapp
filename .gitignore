@@ -1,10 +1,12 @@
 # Secrets and local env
+requisitos_wahsapp_V2.txt
 backend/.env
 wash-hub/.env
 *.env
 *.env.local
 *.local
 .dev.vars
+backend/models/
 
 # Python
 __pycache__/

@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-
-import json
-
-import requests
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session, selectinload
 
-from ..config import settings
 from ..database import get_db
 from ..models import Customer, Order, OrderItem
+from ..plate_reader import PlateReaderNotFoundError, PlateReaderUnavailableError, scan_plate_image
+from ..plate_reader_quota import PlateReaderQuotaExceededError, PlateReaderQuotaUnavailableError, ensure_plate_reader_quota_available, register_plate_reader_usage
 from ..schemas import CustomerOut, OrderCreate, OrderItemOut, OrderOut, OrderUpdate, PlateReaderScanOut, ReservedOrderIdOut
 from ..security import get_current_user, require_manager_password
 from ..time_utils import now_local
@@ -228,56 +225,37 @@ def scan_plate_and_lookup_customer(
 ) -> PlateReaderScanOut:
     if user.company_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario sem empresa vinculada")
-    if not settings.plate_recognizer_token:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Leitor de placa indisponivel. Configure a variavel PLATE_RECOGNIZER_TOKEN.",
-        )
-
-    file_bytes = upload.file.read()
-    if not file_bytes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie uma imagem para leitura da placa")
-
-    files = {
-        "upload": (
-            upload.filename or "plate.jpg",
-            file_bytes,
-            upload.content_type or "application/octet-stream",
-        )
-    }
-    data: dict[str, str] = {}
-    if settings.plate_recognizer_region:
-        data["region"] = settings.plate_recognizer_region
-    else:
-        data["config"] = json.dumps({"mode": "fast"})
 
     try:
-        response = requests.post(
-            settings.plate_recognizer_api_url,
-            headers={"Authorization": f"Token {settings.plate_recognizer_token}"},
-            files=files,
-            data=data,
-            timeout=settings.plate_recognizer_timeout_seconds,
-        )
-    except requests.RequestException as exc:
+        ensure_plate_reader_quota_available(db, user)
+    except PlateReaderQuotaUnavailableError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Falha ao consultar o leitor de placa: {exc}",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except PlateReaderQuotaExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
         ) from exc
 
-    if not response.ok:
+    file_bytes = upload.file.read()
+    try:
+        result = scan_plate_image(file_bytes)
+    except PlateReaderUnavailableError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Falha ao consultar o leitor de placa",
-        )
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PlateReaderNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
 
-    payload = response.json()
-    results = payload.get("results") or []
-    if not results:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma placa foi reconhecida na imagem")
+    quota_snapshot = register_plate_reader_usage(db, user)
 
-    top_result = max(results, key=lambda item: item.get("confidence", 0))
-    plate = _normalize_plate(top_result.get("plate"))
+    plate = _normalize_plate(result.plate)
     if not plate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nenhuma placa valida foi reconhecida na imagem")
 
@@ -285,9 +263,14 @@ def scan_plate_and_lookup_customer(
     reserved_order_id = None if customer else _reserve_next_order_id(db)
     return PlateReaderScanOut(
         plate=plate,
-        confidence=top_result.get("confidence"),
+        confidence=result.confidence,
         customer=_customer_out(customer) if customer else None,
         reservedOrderId=reserved_order_id,
+        rawText=result.raw_text,
+        plateReaderQuotaLimit=quota_snapshot.monthly_limit if quota_snapshot else None,
+        plateReaderQuotaUsed=quota_snapshot.used_count if quota_snapshot else None,
+        plateReaderQuotaRemaining=quota_snapshot.remaining_count if quota_snapshot else None,
+        plateReaderLowQuotaWarning=quota_snapshot.low_remaining_warning if quota_snapshot else False,
     )
 
 

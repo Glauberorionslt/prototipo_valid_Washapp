@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, PlusCircle, Users, Package, Wallet, Shield, LogOut, Droplets, Bell, Search, Briefcase, ReceiptText, Menu } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Users, Package, Wallet, Shield, LogOut, Droplets, Bell, Search, Briefcase, ReceiptText, Menu, Calculator } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ const baseNav = [
   { to: "/produtos" as const, label: "Produtos", icon: Package },
   { to: "/equipe" as const, label: "Equipe", icon: Briefcase },
   { to: "/custos-operacionais" as const, label: "Custos Operacionais", icon: ReceiptText },
-  { to: "/financeiro" as const, label: "Financeiro", icon: Wallet },
+  { to: "/custos-fixos" as const, label: "Custos Fixos", icon: ReceiptText },
+  { to: "/financeiro" as const, label: "Resultado Operacional", icon: Wallet },
+  { to: "/resultado-geral" as const, label: "Resultado Geral", icon: Calculator },
   { to: "/admin" as const, label: "Admin Operacional", icon: Shield },
 ];
 

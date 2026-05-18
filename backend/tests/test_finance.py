@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from app.models import OperationalCostEntry, Order, OrderStatus, TeamCostEntry, TeamMember
+from app.models import FixedCostEntry, FixedCostType, OperationalCostEntry, Order, OrderStatus, TeamCostEntry, TeamMember
 
 
 def test_finance_report_excludes_tips_from_team_cost_total(client, auth_headers, db_session):
@@ -78,3 +78,36 @@ def test_finance_report_includes_created_and_delivered_dates(client, auth_header
     row = response.json()["rows"][0]
     assert row["createdAt"].startswith("2026-05-10T09:30:00")
     assert row["deliveredAt"] is not None
+
+
+def test_general_result_report_includes_fixed_and_operational_costs(client, auth_headers, db_session):
+    today = date.today()
+    fixed_type = FixedCostType(company_id=1, name="Aluguel")
+    order = Order(
+        company_id=1,
+        customer_name="Cliente Resultado",
+        phone="11999999999",
+        vehicle="Corolla",
+        plate="GER1234",
+        color="Cinza",
+        wash_type="completa",
+        base_price=100,
+        total=250,
+        status=OrderStatus.ENTREGUE.value,
+        created_at=datetime.utcnow(),
+    )
+    db_session.add_all([fixed_type, order])
+    db_session.flush()
+
+    db_session.add(OperationalCostEntry(company_id=1, cost_type_id=1, entry_date=today, amount=40))
+    db_session.add(FixedCostEntry(company_id=1, cost_type_id=fixed_type.id, entry_date=today, amount=90))
+    db_session.commit()
+
+    response = client.get(f"/finance/general-report?start={today.isoformat()}&end={today.isoformat()}", headers=auth_headers)
+
+    assert response.status_code == 200
+    summary = response.json()["summary"]
+    assert summary["totalAmount"] == 250.0
+    assert summary["operationalCostTotal"] == 40.0
+    assert summary["fixedCostTotal"] == 90.0
+    assert summary["generalResultTotal"] == 120.0

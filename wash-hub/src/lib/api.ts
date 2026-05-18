@@ -116,6 +116,10 @@ export type AdminSystemRow = {
   keyToken: string | null;
   keyLabel: string | null;
   keyUsedAt: string | null;
+  plateReaderQuotaLimit: number | null;
+  plateReaderQuotaUsed: number | null;
+  plateReaderQuotaRemaining: number | null;
+  plateReaderLowQuotaWarning: boolean;
   createdAt: string;
 };
 
@@ -146,6 +150,11 @@ export type PlateReaderScan = {
   confidence: number | null;
   customer: Customer | null;
   reservedOrderId: number | null;
+  rawText?: string | null;
+  plateReaderQuotaLimit?: number | null;
+  plateReaderQuotaUsed?: number | null;
+  plateReaderQuotaRemaining?: number | null;
+  plateReaderLowQuotaWarning?: boolean;
 };
 
 export type Product = {
@@ -256,6 +265,19 @@ export type OperationalCostEntry = {
   amount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type FixedCostType = OperationalCostType;
+
+export type FixedCostEntry = OperationalCostEntry;
+
+export type GeneralResultReport = {
+  summary: {
+    totalAmount: number;
+    operationalCostTotal: number;
+    fixedCostTotal: number;
+    generalResultTotal: number;
+  };
 };
 
 async function readResponse(response: Response) {
@@ -492,6 +514,28 @@ export function reserveNextOrderId() {
   return apiRequest<{ reservedOrderId: number }>("/orders/reserve-next-id");
 }
 
+export async function scanPlateImage(file: File, timeoutMs = 45000) {
+  const formData = new FormData();
+  formData.append("upload", file);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await apiRequest<PlateReaderScan>("/orders/plate-reader/scan", {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(408, "A leitura da placa demorou demais. Tente uma foto mais proxima, com menos fundo, ou tente novamente.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export function updateOrder(
   orderId: number,
   payload: {
@@ -615,6 +659,10 @@ function composeAdminSystemRows(users: AdminUser[], keys: AccessKey[]): AdminSys
       keyToken: linkedKey?.keyToken ?? null,
       keyLabel: linkedKey?.label ?? null,
       keyUsedAt: linkedKey?.usedAt ?? null,
+      plateReaderQuotaLimit: null,
+      plateReaderQuotaUsed: null,
+      plateReaderQuotaRemaining: null,
+      plateReaderLowQuotaWarning: false,
       createdAt: user.createdAt,
     };
   });
@@ -641,6 +689,10 @@ function composeAdminSystemRows(users: AdminUser[], keys: AccessKey[]): AdminSys
       keyToken: key.keyToken,
       keyLabel: key.label,
       keyUsedAt: key.usedAt,
+      plateReaderQuotaLimit: null,
+      plateReaderQuotaUsed: null,
+      plateReaderQuotaRemaining: null,
+      plateReaderLowQuotaWarning: false,
       createdAt: key.createdAt,
     });
   }
@@ -903,4 +955,96 @@ export function deleteOperationalCostEntry(entryId: number, managerPassword: str
     method: "DELETE",
     managerPassword,
   });
+}
+
+export function listFixedCostTypes(managerPassword: string) {
+  return apiRequest<FixedCostType[]>("/fixed-costs/types", { managerPassword });
+}
+
+export function createFixedCostType(name: string, managerPassword: string) {
+  return apiRequest<FixedCostType>("/fixed-costs/types", {
+    method: "POST",
+    managerPassword,
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function updateFixedCostType(costTypeId: number, payload: { name?: string; isActive?: boolean }, managerPassword: string) {
+  return apiRequest<FixedCostType>(`/fixed-costs/types/${costTypeId}`, {
+    method: "PUT",
+    managerPassword,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteFixedCostType(costTypeId: number, managerPassword: string) {
+  return apiRequest<{ status: string }>(`/fixed-costs/types/${costTypeId}`, {
+    method: "DELETE",
+    managerPassword,
+  });
+}
+
+export function fetchFixedCostEntries(
+  filters: { entryDate?: string; start?: string; end?: string },
+  managerPassword: string,
+) {
+  const params = new URLSearchParams();
+  if (filters.entryDate) params.set("entryDate", filters.entryDate);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<FixedCostEntry[]>(`/fixed-costs/entries${suffix}`, { managerPassword });
+}
+
+export async function exportFixedCostEntries(
+  filters: { entryDate?: string; start?: string; end?: string },
+  managerPassword: string,
+) {
+  const params = new URLSearchParams();
+  if (filters.entryDate) params.set("entryDate", filters.entryDate);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE_URL}/fixed-costs/entries/export${suffix}`, {
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+      "x-manager-password": managerPassword,
+    },
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.text());
+  }
+  return response.blob();
+}
+
+export function saveFixedCostEntries(entryDate: string, items: Array<{ costTypeId: number; amount: number }>, managerPassword: string) {
+  return apiRequest<FixedCostEntry[]>("/fixed-costs/entries/batch", {
+    method: "POST",
+    managerPassword,
+    body: JSON.stringify({ entryDate, items }),
+  });
+}
+
+export function updateFixedCostEntry(entryId: number, amount: number, managerPassword: string) {
+  return apiRequest<FixedCostEntry>(`/fixed-costs/entries/${entryId}`, {
+    method: "PUT",
+    managerPassword,
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export function deleteFixedCostEntry(entryId: number, managerPassword: string) {
+  return apiRequest<{ status: string }>(`/fixed-costs/entries/${entryId}`, {
+    method: "DELETE",
+    managerPassword,
+  });
+}
+
+export function fetchGeneralResultReport(filters: { start?: string; end?: string; status?: string }) {
+  const params = new URLSearchParams();
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<GeneralResultReport>(`/finance/general-report${suffix}`);
 }

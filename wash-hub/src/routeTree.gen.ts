@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResultadoGeralRouteImport } from './routes/resultado-geral'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as OrdensRouteImport } from './routes/ordens'
 import { Route as NovaOrdemRouteImport } from './routes/nova-ordem'
@@ -16,11 +17,17 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as CustosOperacionaisRouteImport } from './routes/custos-operacionais'
+import { Route as CustosFixosRouteImport } from './routes/custos-fixos'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as AdminSistemaRouteImport } from './routes/admin-sistema'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ResultadoGeralRoute = ResultadoGeralRouteImport.update({
+  id: '/resultado-geral',
+  path: '/resultado-geral',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutosRoute = ProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
@@ -56,6 +63,11 @@ const CustosOperacionaisRoute = CustosOperacionaisRouteImport.update({
   path: '/custos-operacionais',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustosFixosRoute = CustosFixosRouteImport.update({
+  id: '/custos-fixos',
+  path: '/custos-fixos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesRoute = ClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
@@ -82,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/admin-sistema': typeof AdminSistemaRoute
   '/clientes': typeof ClientesRoute
+  '/custos-fixos': typeof CustosFixosRoute
   '/custos-operacionais': typeof CustosOperacionaisRoute
   '/equipe': typeof EquipeRoute
   '/financeiro': typeof FinanceiroRoute
@@ -89,12 +102,14 @@ export interface FileRoutesByFullPath {
   '/nova-ordem': typeof NovaOrdemRoute
   '/ordens': typeof OrdensRoute
   '/produtos': typeof ProdutosRoute
+  '/resultado-geral': typeof ResultadoGeralRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/admin-sistema': typeof AdminSistemaRoute
   '/clientes': typeof ClientesRoute
+  '/custos-fixos': typeof CustosFixosRoute
   '/custos-operacionais': typeof CustosOperacionaisRoute
   '/equipe': typeof EquipeRoute
   '/financeiro': typeof FinanceiroRoute
@@ -102,6 +117,7 @@ export interface FileRoutesByTo {
   '/nova-ordem': typeof NovaOrdemRoute
   '/ordens': typeof OrdensRoute
   '/produtos': typeof ProdutosRoute
+  '/resultado-geral': typeof ResultadoGeralRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,6 +125,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/admin-sistema': typeof AdminSistemaRoute
   '/clientes': typeof ClientesRoute
+  '/custos-fixos': typeof CustosFixosRoute
   '/custos-operacionais': typeof CustosOperacionaisRoute
   '/equipe': typeof EquipeRoute
   '/financeiro': typeof FinanceiroRoute
@@ -116,6 +133,7 @@ export interface FileRoutesById {
   '/nova-ordem': typeof NovaOrdemRoute
   '/ordens': typeof OrdensRoute
   '/produtos': typeof ProdutosRoute
+  '/resultado-geral': typeof ResultadoGeralRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,6 +142,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-sistema'
     | '/clientes'
+    | '/custos-fixos'
     | '/custos-operacionais'
     | '/equipe'
     | '/financeiro'
@@ -131,12 +150,14 @@ export interface FileRouteTypes {
     | '/nova-ordem'
     | '/ordens'
     | '/produtos'
+    | '/resultado-geral'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/admin-sistema'
     | '/clientes'
+    | '/custos-fixos'
     | '/custos-operacionais'
     | '/equipe'
     | '/financeiro'
@@ -144,12 +165,14 @@ export interface FileRouteTypes {
     | '/nova-ordem'
     | '/ordens'
     | '/produtos'
+    | '/resultado-geral'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/admin-sistema'
     | '/clientes'
+    | '/custos-fixos'
     | '/custos-operacionais'
     | '/equipe'
     | '/financeiro'
@@ -157,6 +180,7 @@ export interface FileRouteTypes {
     | '/nova-ordem'
     | '/ordens'
     | '/produtos'
+    | '/resultado-geral'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -164,6 +188,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdminSistemaRoute: typeof AdminSistemaRoute
   ClientesRoute: typeof ClientesRoute
+  CustosFixosRoute: typeof CustosFixosRoute
   CustosOperacionaisRoute: typeof CustosOperacionaisRoute
   EquipeRoute: typeof EquipeRoute
   FinanceiroRoute: typeof FinanceiroRoute
@@ -171,10 +196,18 @@ export interface RootRouteChildren {
   NovaOrdemRoute: typeof NovaOrdemRoute
   OrdensRoute: typeof OrdensRoute
   ProdutosRoute: typeof ProdutosRoute
+  ResultadoGeralRoute: typeof ResultadoGeralRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resultado-geral': {
+      id: '/resultado-geral'
+      path: '/resultado-geral'
+      fullPath: '/resultado-geral'
+      preLoaderRoute: typeof ResultadoGeralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produtos': {
       id: '/produtos'
       path: '/produtos'
@@ -224,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustosOperacionaisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/custos-fixos': {
+      id: '/custos-fixos'
+      path: '/custos-fixos'
+      fullPath: '/custos-fixos'
+      preLoaderRoute: typeof CustosFixosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes': {
       id: '/clientes'
       path: '/clientes'
@@ -260,6 +300,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdminSistemaRoute: AdminSistemaRoute,
   ClientesRoute: ClientesRoute,
+  CustosFixosRoute: CustosFixosRoute,
   CustosOperacionaisRoute: CustosOperacionaisRoute,
   EquipeRoute: EquipeRoute,
   FinanceiroRoute: FinanceiroRoute,
@@ -267,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   NovaOrdemRoute: NovaOrdemRoute,
   OrdensRoute: OrdensRoute,
   ProdutosRoute: ProdutosRoute,
+  ResultadoGeralRoute: ResultadoGeralRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -64,6 +64,10 @@ class Company(Base):
         back_populates="company")
     operational_cost_entries: Mapped[list["OperationalCostEntry"]] = relationship(
         back_populates="company")
+    fixed_cost_types: Mapped[list["FixedCostType"]] = relationship(
+        back_populates="company")
+    fixed_cost_entries: Mapped[list["FixedCostEntry"]] = relationship(
+        back_populates="company")
 
 
 class User(Base):
@@ -115,6 +119,26 @@ class AccessKey(Base):
         DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=now_local)
+
+
+class PlateReaderMonthlyUsage(Base):
+    __tablename__ = "plate_reader_monthly_usage"
+    __table_args__ = (
+        UniqueConstraint("user_id", "month_start", name="uq_plate_reader_monthly_usage_user_month"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    month_start: Mapped[date] = mapped_column(Date, index=True)
+    usage_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_local
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_local, onupdate=now_local
+    )
 
 
 class AppSetting(Base):
@@ -316,3 +340,42 @@ class OperationalCostEntry(Base):
         back_populates="operational_cost_entries")
     cost_type: Mapped[OperationalCostType] = relationship(
         back_populates="entries")
+
+
+class FixedCostType(Base):
+    __tablename__ = "fixed_cost_types"
+    __table_args__ = (UniqueConstraint("company_id", "name",
+                      name="uq_fixed_cost_type_company_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey(
+        "companies.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_local)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
+
+    company: Mapped[Company] = relationship(back_populates="fixed_cost_types")
+    entries: Mapped[list["FixedCostEntry"]] = relationship(
+        back_populates="cost_type", cascade="all, delete-orphan")
+
+
+class FixedCostEntry(Base):
+    __tablename__ = "fixed_cost_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey(
+        "companies.id", ondelete="CASCADE"), index=True)
+    cost_type_id: Mapped[int] = mapped_column(ForeignKey(
+        "fixed_cost_types.id", ondelete="CASCADE"), index=True)
+    entry_date: Mapped[date] = mapped_column(Date, index=True)
+    amount: Mapped[float] = mapped_column(Numeric(10, 2))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_local)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_local, onupdate=now_local)
+
+    company: Mapped[Company] = relationship(back_populates="fixed_cost_entries")
+    cost_type: Mapped[FixedCostType] = relationship(back_populates="entries")

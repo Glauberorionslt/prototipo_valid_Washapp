@@ -11,8 +11,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import OperationalCostEntry, Order, TeamCostEntry, User
-from ..schemas import FinanceReportOut, FinanceRowOut, FinanceSendWhatsappIn, FinanceSummaryOut
+from ..models import FixedCostEntry, OperationalCostEntry, Order, TeamCostEntry, User
+from ..schemas import FinanceReportOut, FinanceRowOut, FinanceSendWhatsappIn, FinanceSummaryOut, GeneralResultReportOut, GeneralResultSummaryOut
 from ..security import get_current_user, require_manager_password
 from ..time_utils import local_day_bounds
 
@@ -58,6 +58,15 @@ def _sum_operational_costs(db: Session, company_id: int, start: date | None, end
     return round(float(db.scalar(stmt) or 0), 2)
 
 
+def _sum_fixed_costs(db: Session, company_id: int, start: date | None, end: date | None) -> float:
+    stmt = select(func.coalesce(func.sum(FixedCostEntry.amount), 0)).where(FixedCostEntry.company_id == company_id)
+    if start is not None:
+        stmt = stmt.where(FixedCostEntry.entry_date >= start)
+    if end is not None:
+        stmt = stmt.where(FixedCostEntry.entry_date <= end)
+    return round(float(db.scalar(stmt) or 0), 2)
+
+
 def _report_out(db: Session, company_id: int, orders: list[Order], start: date | None, end: date | None) -> FinanceReportOut:
     finalized = [order for order in orders if order.status in {
         "pronto", "entregue"}]
@@ -90,6 +99,21 @@ def _report_out(db: Session, company_id: int, orders: list[Order], start: date |
     )
 
 
+def _general_report_out(db: Session, company_id: int, orders: list[Order], start: date | None, end: date | None) -> GeneralResultReportOut:
+    finalized = [order for order in orders if order.status in {"pronto", "entregue"}]
+    total_amount = round(sum(float(order.total) for order in finalized), 2)
+    operational_cost_total = _sum_operational_costs(db, company_id, start, end)
+    fixed_cost_total = _sum_fixed_costs(db, company_id, start, end)
+    return GeneralResultReportOut(
+        summary=GeneralResultSummaryOut(
+            totalAmount=total_amount,
+            operationalCostTotal=operational_cost_total,
+            fixedCostTotal=fixed_cost_total,
+            generalResultTotal=round(total_amount - operational_cost_total - fixed_cost_total, 2),
+        )
+    )
+
+
 @router.get("/report", response_model=FinanceReportOut)
 def report(
     start: date | None = Query(default=None),
@@ -101,6 +125,19 @@ def report(
     if user.company_id is None:
         return _report_out(db, 0, [], start, end)
     return _report_out(db, user.company_id, _filtered_orders(db, user.company_id, start, end, status_filter), start, end)
+
+
+@router.get("/general-report", response_model=GeneralResultReportOut)
+def general_report(
+    start: date | None = Query(default=None),
+    end: date | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> GeneralResultReportOut:
+    if user.company_id is None:
+        return _general_report_out(db, 0, [], start, end)
+    return _general_report_out(db, user.company_id, _filtered_orders(db, user.company_id, start, end, status_filter), start, end)
 
 
 @router.get("/export")

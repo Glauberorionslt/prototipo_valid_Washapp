@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import AccessKey, AccessKeyStatus, Company, ContractStatus, User, UserStatus
+from ..plate_reader_quota import build_plate_reader_quota_snapshots
 from ..schemas import AccessKeyCreate, AccessKeyOut, AdminSystemRowOut, AdminUserCreate, AdminUserOut, AdminUserUpdate, AdminWhatsAppConfigOut, CompanyContractStatusOut, ManagerProfileUpdate, WhatsAppSenderUpdate
 from ..security import get_current_user, get_current_company, hash_password, require_manager_password, require_master_user
 from ..whatsapp_client import get_bridge_qr, get_bridge_status, reset_bridge_session
@@ -94,6 +95,10 @@ def _build_admin_system_rows(db: Session) -> list[AdminSystemRowOut]:
     users = db.scalars(select(User).order_by(User.created_at.desc())).all()
     keys = db.scalars(select(AccessKey).order_by(
         AccessKey.created_at.desc())).all()
+    quota_by_user_id = build_plate_reader_quota_snapshots(
+        db,
+        user_ids=[user.id for user in users if user.id is not None],
+    )
 
     keys_by_id = {key.id: key for key in keys if key.id is not None}
     key_by_used_user_id = {
@@ -104,6 +109,7 @@ def _build_admin_system_rows(db: Session) -> list[AdminSystemRowOut]:
 
     for user in users:
         linked_key = None
+        quota = quota_by_user_id.get(user.id)
         if user.access_key_id is not None:
             linked_key = keys_by_id.get(user.access_key_id)
         if linked_key is None:
@@ -130,6 +136,10 @@ def _build_admin_system_rows(db: Session) -> list[AdminSystemRowOut]:
                 keyToken=linked_key.key_token if linked_key else None,
                 keyLabel=linked_key.label if linked_key else None,
                 keyUsedAt=linked_key.used_at if linked_key else None,
+                plateReaderQuotaLimit=quota.monthly_limit if quota else None,
+                plateReaderQuotaUsed=quota.used_count if quota else None,
+                plateReaderQuotaRemaining=quota.remaining_count if quota else None,
+                plateReaderLowQuotaWarning=quota.low_remaining_warning if quota else False,
                 createdAt=user.created_at,
             )
         )

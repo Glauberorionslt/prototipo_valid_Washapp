@@ -31,6 +31,17 @@ cd prototipo_washapp_v2/backend
 "C:/Users/Glauber Marques/OneDrive - UNIP/ONEDRIVE GLAUBER/PROJETOS/PYTHON/saas/libs_saas/Scripts/python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8011
 ```
 
+## Detector de placa local
+
+O backend esta configurado para usar um detector YOLOv8 local em `models/license_plate_yolov8.pt` antes do PaddleOCR.
+
+Se o arquivo nao existir no ambiente, baixe com:
+
+```bash
+cd prototipo_washapp_v2/backend
+"C:/Users/Glauber Marques/OneDrive - UNIP/ONEDRIVE GLAUBER/PROJETOS/PYTHON/saas/libs_saas/Scripts/python.exe" scripts/download_plate_detector.py
+```
+
 ## Seed a partir do frontend
 
 ```bash

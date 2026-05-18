@@ -199,6 +199,11 @@ class PlateReaderScanOut(BaseModel):
     confidence: float | None = None
     customer: CustomerOut | None = None
     reservedOrderId: int | None = None
+    rawText: str | None = None
+    plateReaderQuotaLimit: int | None = None
+    plateReaderQuotaUsed: int | None = None
+    plateReaderQuotaRemaining: int | None = None
+    plateReaderLowQuotaWarning: bool = False
 
 
 class DashboardOut(BaseModel):
@@ -232,6 +237,17 @@ class FinanceSummaryOut(BaseModel):
 class FinanceReportOut(BaseModel):
     summary: FinanceSummaryOut
     rows: list[FinanceRowOut]
+
+
+class GeneralResultSummaryOut(BaseModel):
+    totalAmount: float
+    operationalCostTotal: float = 0
+    fixedCostTotal: float = 0
+    generalResultTotal: float = 0
+
+
+class GeneralResultReportOut(BaseModel):
+    summary: GeneralResultSummaryOut
 
 
 class ManagerProfileUpdate(BaseModel):
@@ -313,6 +329,10 @@ class AdminSystemRowOut(BaseModel):
     keyToken: str | None = None
     keyLabel: str | None = None
     keyUsedAt: datetime | None = None
+    plateReaderQuotaLimit: int | None = None
+    plateReaderQuotaUsed: int | None = None
+    plateReaderQuotaRemaining: int | None = None
+    plateReaderLowQuotaWarning: bool = False
     createdAt: datetime
 
 

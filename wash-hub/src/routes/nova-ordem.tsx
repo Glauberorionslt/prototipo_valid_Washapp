@@ -30,207 +30,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createOrder, listCustomers, listProducts, reserveNextOrderId, type Customer, type PlateReaderScan, type Product } from "@/lib/api";
+import { createOrder, listCustomers, listProducts, scanPlateImage, type Customer, type PlateReaderScan, type Product } from "@/lib/api";
 
 export const Route = createFileRoute("/nova-ordem")({ component: NovaOrdem });
 
-type OcrWorker = {
-  recognize: (image: Blob | File, options?: Record<string, unknown>) => Promise<{ data: { text: string } }>;
-  setParameters: (params: Record<string, string | number>) => Promise<unknown>;
-  terminate: () => Promise<unknown>;
-};
-
-type OcrLoggerMessage = {
-  status?: string;
-  progress?: number;
-};
-
-const PLATE_MASKS = ["LLLDDDD", "LLLDLDD"] as const;
-
-const LETTER_FIXES: Record<string, string> = {
-  "0": "O",
-  "1": "I",
-  "2": "Z",
-  "4": "A",
-  "5": "S",
-  "6": "G",
-  "7": "T",
-  "8": "B",
-};
-
-const DIGIT_FIXES: Record<string, string> = {
-  O: "0",
-  Q: "0",
-  D: "0",
-  I: "1",
-  L: "1",
-  Z: "2",
-  S: "5",
-  B: "8",
-  G: "6",
-  T: "7",
-  A: "4",
-};
-
-function coercePlateByMask(value: string, mask: (typeof PLATE_MASKS)[number]) {
-  if (value.length !== mask.length) {
-    return null;
-  }
-
-  let normalized = "";
-  for (let index = 0; index < mask.length; index += 1) {
-    const character = value[index];
-    const expected = mask[index];
-
-    if (expected === "L") {
-      if (/[A-Z]/.test(character)) {
-        normalized += character;
-        continue;
-      }
-      if (LETTER_FIXES[character]) {
-        normalized += LETTER_FIXES[character];
-        continue;
-      }
-      return null;
-    }
-
-    if (/\d/.test(character)) {
-      normalized += character;
-      continue;
-    }
-    if (DIGIT_FIXES[character]) {
-      normalized += DIGIT_FIXES[character];
-      continue;
-    }
-    return null;
-  }
-
-  return normalized;
-}
-
-function extractPlateFromOcrText(text: string) {
-  const normalizedText = text.toUpperCase();
-  const tokenSet = new Set<string>();
-  const tokens = normalizedText.split(/[^A-Z0-9]+/).filter(Boolean);
-  const compact = normalizedText.replace(/[^A-Z0-9]/g, "");
-
-  for (const token of [...tokens, compact]) {
-    if (token.length < 7) {
-      continue;
-    }
-    for (let index = 0; index <= token.length - 7; index += 1) {
-      tokenSet.add(token.slice(index, index + 7));
-    }
-  }
-
-  const candidates = [...tokenSet];
-  const exact = candidates.find((candidate) => /^[A-Z]{3}\d{4}$/.test(candidate) || /^[A-Z]{3}\d[A-Z]\d{2}$/.test(candidate));
-  if (exact) {
-    return exact;
-  }
-
-  for (const candidate of candidates) {
-    for (const mask of PLATE_MASKS) {
-      const coerced = coercePlateByMask(candidate, mask);
-      if (coerced) {
-        return coerced;
-      }
-    }
-  }
-
-  return null;
-}
-
-function loadImageFromFile(file: File) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const imageUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(imageUrl);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(imageUrl);
-      reject(new Error("Nao foi possivel abrir a imagem para leitura da placa."));
-    };
-    image.src = imageUrl;
-  });
-}
-
-async function canvasToBlob(canvas: HTMLCanvasElement) {
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-        return;
-      }
-      reject(new Error("Nao foi possivel preparar a imagem para OCR."));
-    }, "image/png");
-  });
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
-}
-
-async function buildPlateOcrTargets(file: File) {
-  const image = await loadImageFromFile(file);
-  const crops = [
-    { left: 0, top: 0, width: 1, height: 1, scale: 1, threshold: false },
-    { left: 0, top: 0, width: 1, height: 1, scale: 1.6 },
-    { left: 0.12, top: 0.45, width: 0.76, height: 0.24, scale: 2.4 },
-    { left: 0.18, top: 0.55, width: 0.64, height: 0.18, scale: 2.8 },
-    { left: 0.2, top: 0.48, width: 0.6, height: 0.16, scale: 3.2 },
-  ];
-
-  const blobs: Array<{ blob: Blob; mode: "strict" | "fallback" }> = [];
-  for (const crop of crops) {
-    const sourceX = Math.round(image.width * crop.left);
-    const sourceY = Math.round(image.height * crop.top);
-    const sourceWidth = Math.max(1, Math.round(image.width * crop.width));
-    const sourceHeight = Math.max(1, Math.round(image.height * crop.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(64, Math.round(sourceWidth * crop.scale));
-    canvas.height = Math.max(32, Math.round(sourceHeight * crop.scale));
-    const context = canvas.getContext("2d");
-    if (!context) {
-      continue;
-    }
-
-    context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-    if (crop.threshold !== false) {
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      const pixels = imageData.data;
-      for (let index = 0; index < pixels.length; index += 4) {
-        const grayscale = pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114;
-        const boosted = grayscale > 150 ? 255 : 0;
-        pixels[index] = boosted;
-        pixels[index + 1] = boosted;
-        pixels[index + 2] = boosted;
-      }
-      context.putImageData(imageData, 0, 0);
-    }
-    blobs.push({ blob: await canvasToBlob(canvas), mode: crop.threshold === false ? "fallback" : "strict" });
-  }
-
-  return blobs;
-}
-
 function NovaOrdem() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const ocrWorkerRef = useRef<OcrWorker | null>(null);
-  const ocrWorkerPromiseRef = useRef<Promise<OcrWorker> | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [washTypes, setWashTypes] = useState<Product[]>([]);
@@ -305,17 +110,6 @@ function NovaOrdem() {
     setCustomerSearch(selectedCustomer.plate ? `${selectedCustomer.name} • ${selectedCustomer.plate}` : selectedCustomer.name);
   }, [selectedCustomer]);
 
-  useEffect(() => {
-    return () => {
-      const worker = ocrWorkerRef.current;
-      ocrWorkerRef.current = null;
-      ocrWorkerPromiseRef.current = null;
-      if (worker) {
-        void worker.terminate();
-      }
-    };
-  }, []);
-
   function resetCustomerForm() {
     setSelectedCustomerId("0");
     setCustomerSearch("");
@@ -344,42 +138,6 @@ function NovaOrdem() {
 
   function sanitizePlate(value: string) {
     return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-  }
-
-  async function getOcrWorker() {
-    if (ocrWorkerRef.current) {
-      return ocrWorkerRef.current;
-    }
-    if (ocrWorkerPromiseRef.current) {
-      return ocrWorkerPromiseRef.current;
-    }
-
-    ocrWorkerPromiseRef.current = (async () => {
-      const { createWorker, PSM } = await import("tesseract.js");
-      const worker = (await createWorker("eng", 1, {
-        logger: (event: OcrLoggerMessage) => {
-          if (event.status === "recognizing text" && typeof event.progress === "number") {
-            setScanStatus(`Lendo placa... ${Math.round(event.progress * 100)}%`);
-            return;
-          }
-          if (event.status) {
-            setScanStatus(`Lendo placa... ${event.status}`);
-          }
-        },
-      })) as OcrWorker;
-      await worker.setParameters({
-        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        tessedit_pageseg_mode: PSM.SPARSE_TEXT,
-      });
-      ocrWorkerRef.current = worker;
-      return worker;
-    })();
-
-    try {
-      return await ocrWorkerPromiseRef.current;
-    } finally {
-      ocrWorkerPromiseRef.current = null;
-    }
   }
 
   function validateOrderForm() {
@@ -431,80 +189,64 @@ function NovaOrdem() {
     setSelectedProductId("");
   }
 
+  function startManualEntryFromScan() {
+    if (!scanResult?.plate) {
+      return;
+    }
+    resetCustomerForm();
+    setPlate(scanResult.plate);
+    setScanDecisionOpen(false);
+    setMessage(`Sequencia ${scanResult.plate} identificada. Complete os demais dados manualmente.`);
+  }
+
+  function applyMatchedCustomerFromScan() {
+    if (!scanResult?.customer || !scanResult.plate) {
+      return;
+    }
+
+    setCustomers((current) => {
+      const exists = current.some((customer) => customer.id === scanResult.customer?.id);
+      if (exists) {
+        return current.map((customer) => (customer.id === scanResult.customer?.id ? scanResult.customer : customer));
+      }
+      return [...current, scanResult.customer].sort((left, right) => left.name.localeCompare(right.name));
+    });
+    setSelectedCustomerId(String(scanResult.customer.id));
+    setPlate(scanResult.plate);
+    setScanDecisionOpen(false);
+    setMessage(`Sequencia ${scanResult.plate} vinculada ao cliente ${scanResult.customer.name}.`);
+  }
+
+  function startGuestEntryFromScan() {
+    if (!scanResult?.reservedOrderId || !scanResult.plate) {
+      setError("Nao foi possivel preparar a ordem avulsa a partir da sequencia detectada.");
+      return;
+    }
+    applyGuestPreset(scanResult.reservedOrderId, scanResult.plate);
+    setScanDecisionOpen(false);
+    setMessage(`Sequencia ${scanResult.plate} identificada. Ordem avulsa preparada com o numero ${scanResult.reservedOrderId}.`);
+  }
+
   async function handleScanPlate(file: File) {
     setMessage(null);
     setError(null);
     setIsScanningPlate(true);
-    setScanStatus("Preparando leitura...");
+    setScanStatus("Enviando imagem para leitura...");
 
     try {
-      const worker = await withTimeout(getOcrWorker(), 20000, "A inicializacao do leitor demorou demais. Tente novamente.");
-      const targets = await withTimeout(buildPlateOcrTargets(file), 10000, "A preparacao da imagem demorou demais. Tente uma foto menor.");
-      const recognizedTexts: string[] = [];
-      for (const [index, target] of targets.entries()) {
-        setScanStatus(`Lendo placa... etapa ${index + 1} de ${targets.length}`);
-        if (target.mode === "strict") {
-          await worker.setParameters({ tessedit_pageseg_mode: 8 });
-        } else {
-          await worker.setParameters({ tessedit_pageseg_mode: 11 });
-        }
-        const { data } = await withTimeout(
-          worker.recognize(target.blob),
-          15000,
-          "A leitura da placa demorou demais. Tente uma foto mais proxima e com menos fundo.",
-        );
-        recognizedTexts.push(data.text);
+      setScanStatus("Processando placa no servidor...");
+      const result = await scanPlateImage(file, 45000);
+      const detectedSequence = sanitizePlate(result.rawText ?? result.plate);
+      if (!detectedSequence) {
+        throw new Error("Falha ao identificar caracteres na imagem recebida.");
       }
-
-      const recognizedPlate = recognizedTexts
-        .map((text) => extractPlateFromOcrText(text))
-        .find((value): value is string => Boolean(value));
-
-      if (!recognizedPlate) {
-        throw new Error("Nao foi possivel identificar uma placa valida na imagem. Tente fotografar a placa mais de perto e com menos fundo.");
-      }
-
-      const customer = customers.find((entry) => sanitizePlate(entry.plate ?? "") === recognizedPlate) ?? null;
-      let reservedId: number | null = null;
-      if (!customer) {
-        const reservation = await reserveNextOrderId();
-        reservedId = reservation.reservedOrderId;
-      }
-
-      const result: PlateReaderScan = {
-        plate: recognizedPlate,
-        confidence: null,
-        customer,
-        reservedOrderId: reservedId,
-      };
-
-      setPlate(result.plate);
-      setScanResult(result);
-
-      if (result.customer) {
-        setCustomers((current) => {
-          const exists = current.some((customer) => customer.id === result.customer?.id);
-          if (exists) {
-            return current.map((customer) => (customer.id === result.customer?.id ? result.customer : customer));
-          }
-          return [...current, result.customer].sort((left, right) => left.name.localeCompare(right.name));
-        });
-        setSelectedCustomerId(String(result.customer.id));
-        setScanDecisionOpen(false);
-        setMessage(`Placa ${result.plate} lida com sucesso. Cadastro encontrado automaticamente.`);
-        return;
-      }
-
-      resetCustomerForm();
-      setPlate(result.plate);
+      setScanResult({
+        ...result,
+        plate: detectedSequence,
+        rawText: result.rawText ?? result.plate,
+      });
       setScanDecisionOpen(true);
     } catch (err) {
-      const worker = ocrWorkerRef.current;
-      ocrWorkerRef.current = null;
-      ocrWorkerPromiseRef.current = null;
-      if (worker) {
-        void worker.terminate();
-      }
       setError(err instanceof Error ? err.message : "Falha ao ler a placa");
     } finally {
       setIsScanningPlate(false);
@@ -513,26 +255,6 @@ function NovaOrdem() {
         fileInputRef.current.value = "";
       }
     }
-  }
-
-  function startManualEntryFromScan() {
-    if (!scanResult) {
-      return;
-    }
-    resetCustomerForm();
-    setPlate(scanResult.plate);
-    setScanDecisionOpen(false);
-    setMessage(`Placa ${scanResult.plate} identificada. Complete os demais dados manualmente.`);
-  }
-
-  function startGuestEntryFromScan() {
-    if (!scanResult?.reservedOrderId) {
-      setError("Nao foi possivel preparar a ordem avulsa a partir da leitura da placa.");
-      return;
-    }
-    applyGuestPreset(scanResult.reservedOrderId, scanResult.plate);
-    setScanDecisionOpen(false);
-    setMessage(`Placa ${scanResult.plate} identificada. Ordem avulsa preparada com o numero ${scanResult.reservedOrderId}.`);
   }
 
   async function handleCreateOrder() {
@@ -600,8 +322,8 @@ function NovaOrdem() {
                 }
               }}
             />
-            <Button variant="outline" disabled>
-              <Camera className="h-4 w-4" /> Leitor suspenso temporariamente
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isScanningPlate}>
+              <Camera className="h-4 w-4" /> {isScanningPlate ? "Lendo caracteres..." : "Abrir com leitor"}
             </Button>
           </>
         </div>
@@ -646,7 +368,7 @@ function NovaOrdem() {
                   {customerSearch.trim() && customerSuggestions.length === 0 && (
                     <p className="mt-2 text-xs text-muted-foreground">Nenhum cliente encontrado para essa busca.</p>
                   )}
-                  <p className="mt-2 text-xs text-muted-foreground">A leitura automatica de placa esta suspensa temporariamente. Preencha a placa manualmente neste cadastro.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Use “Abrir com leitor” no celular para capturar a imagem e detectar a melhor sequencia com letras e numeros.</p>
                 </div>
                 <div className="md:col-span-2">
                   <Label>Selecionar Cliente</Label>
@@ -803,14 +525,34 @@ function NovaOrdem() {
       <Dialog open={scanDecisionOpen} onOpenChange={setScanDecisionOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Placa lida sem cadastro anterior</DialogTitle>
+            <DialogTitle>Sequencia detectada</DialogTitle>
             <DialogDescription>
-              A placa {scanResult?.plate ? `“${scanResult.plate}”` : ""} foi reconhecida, mas nao existe cliente cadastrado com ela. Escolha como deseja seguir.
+              A sequencia {scanResult?.plate ? `“${scanResult.plate}”` : ""} foi identificada. Escolha como deseja continuar.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
-            <p>1. Continuar cadastro manual: mantem a placa lida e voce preenche nome, telefone, veiculo e cor.</p>
-            <p>2. Ordem avulsa automatica: preenche nome, telefone, veiculo e cor com dados avulsos vinculados ao numero da nova ordem.</p>
+            {scanResult?.rawText && scanResult.rawText !== scanResult.plate && (
+              <p className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-foreground">
+                Leitura bruta: {scanResult.rawText}
+              </p>
+            )}
+            {scanResult?.plateReaderLowQuotaWarning && scanResult.plateReaderQuotaRemaining !== null && scanResult.plateReaderQuotaRemaining !== undefined && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                Restam {scanResult.plateReaderQuotaRemaining} leituras de placa neste mes para este usuario.
+              </p>
+            )}
+            <p>1. Continuar cadastro manual: mantem a sequencia detectada e voce preenche nome, telefone, veiculo e cor.</p>
+            {scanResult?.customer ? (
+              <p>2. Usar cliente encontrado: aplica o cadastro ja vinculado a essa placa no sistema.</p>
+            ) : (
+              <p>2. Ordem avulsa automatica: preenche nome, telefone, veiculo e cor com dados avulsos vinculados ao numero da nova ordem.</p>
+            )}
+            {scanResult?.customer && (
+              <p className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-foreground">
+                Cliente encontrado: {scanResult.customer.name}
+                {scanResult.customer.plate ? ` • ${scanResult.customer.plate}` : ""}
+              </p>
+            )}
             {scanResult?.reservedOrderId && (
               <p className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-foreground">
                 Numero previsto da ordem: {scanResult.reservedOrderId}
@@ -819,7 +561,11 @@ function NovaOrdem() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={startManualEntryFromScan}>Continuar manualmente</Button>
-            <Button className="bg-gradient-primary shadow-glow" onClick={startGuestEntryFromScan}>Cadastrar ordem avulsa</Button>
+            {scanResult?.customer ? (
+              <Button className="bg-gradient-primary shadow-glow" onClick={applyMatchedCustomerFromScan}>Usar cliente encontrado</Button>
+            ) : (
+              <Button className="bg-gradient-primary shadow-glow" onClick={startGuestEntryFromScan}>Cadastrar ordem avulsa</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

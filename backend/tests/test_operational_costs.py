@@ -26,3 +26,17 @@ def test_operational_cost_entries_support_date_range(client, master_auth_headers
     payload = response.json()
     assert [item["entryDate"] for item in payload] == ["2026-05-03", "2026-05-01"]
     assert [item["costTypeName"] for item in payload] == ["Agua", "Combustivel"]
+
+
+def test_operational_cost_batch_rejects_retroactive_month(client, master_auth_headers):
+    response = client.post(
+        "/operational-costs/entries/batch",
+        headers=master_auth_headers,
+        json={
+            "entryDate": "2026-04-10",
+            "items": [{"costTypeId": 1, "amount": 100}],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "So e permitido lancar custos operacionais do mes vigente"

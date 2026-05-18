@@ -13,3 +13,8 @@ requests
 python-multipart
 pytest
 httpx
+easyocr
+opencv-python-headless
+ultralytics>=8.3,<9
+paddlepaddle>=3.2,<4
+paddleocr>=3.0,<4

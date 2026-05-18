@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import create_schema
-from .routers import admin, auth, customers, dashboard, finance, operational_costs, orders, products, team, whatsapp
+from .routers import admin, auth, customers, dashboard, finance, fixed_costs, operational_costs, orders, products, team, whatsapp
 
 
 @asynccontextmanager
@@ -37,6 +37,8 @@ app.include_router(finance.router, prefix="/finance", tags=["finance"])
 app.include_router(team.router, prefix="/team", tags=["team"])
 app.include_router(operational_costs.router,
                    prefix="/operational-costs", tags=["operational-costs"])
+app.include_router(fixed_costs.router,
+                   prefix="/fixed-costs", tags=["fixed-costs"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])
 app.include_router(whatsapp.router, prefix="/whatsapp", tags=["whatsapp"])
 

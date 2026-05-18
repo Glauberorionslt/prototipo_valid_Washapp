@@ -30,6 +30,11 @@ class Settings:
     plate_recognizer_api_url: str
     plate_recognizer_region: str | None
     plate_recognizer_timeout_seconds: int
+    plate_detector_model_path: str | None
+    plate_detector_confidence: float
+    plate_detector_image_size: int
+    plate_scan_timeout_seconds: int
+    plate_ocr_timeout_seconds: float
 
 
 def _build_database_url() -> str:
@@ -62,4 +67,9 @@ settings = Settings(
     plate_recognizer_api_url=os.getenv("PLATE_RECOGNIZER_API_URL", "https://api.platerecognizer.com/v1/plate-reader/"),
     plate_recognizer_region=os.getenv("PLATE_RECOGNIZER_REGION") or None,
     plate_recognizer_timeout_seconds=int(os.getenv("PLATE_RECOGNIZER_TIMEOUT_SECONDS", "20")),
+    plate_detector_model_path=os.getenv("PLATE_DETECTOR_MODEL_PATH") or None,
+    plate_detector_confidence=float(os.getenv("PLATE_DETECTOR_CONFIDENCE", "0.20")),
+    plate_detector_image_size=int(os.getenv("PLATE_DETECTOR_IMAGE_SIZE", "960")),
+    plate_scan_timeout_seconds=int(os.getenv("PLATE_SCAN_TIMEOUT_SECONDS", "12")),
+    plate_ocr_timeout_seconds=float(os.getenv("PLATE_OCR_TIMEOUT_SECONDS", "8")),
 )

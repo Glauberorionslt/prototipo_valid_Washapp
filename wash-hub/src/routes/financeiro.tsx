@@ -93,7 +93,7 @@ function Financeiro() {
       const url = window.URL.createObjectURL(blob);
       const anchor = window.document.createElement("a");
       anchor.href = url;
-      anchor.download = "financeiro.xlsx";
+      anchor.download = "resultado-operacional.xlsx";
       anchor.click();
       window.URL.revokeObjectURL(url);
       setMessage("Relatorio exportado.");
@@ -111,8 +111,8 @@ function Financeiro() {
             <Link to="/"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Financeiro Operacional</h1>
-            <p className="text-sm text-muted-foreground">Acompanhe seu faturamento e exporte relatórios.</p>
+            <h1 className="text-2xl font-bold tracking-tight">Resultado Operacional</h1>
+            <p className="text-sm text-muted-foreground">Acompanhe o resultado operacional e exporte relatórios.</p>
           </div>
         </div>
 
