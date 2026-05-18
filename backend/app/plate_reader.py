@@ -47,6 +47,10 @@ class PlateReaderNotFoundError(RuntimeError):
     pass
 
 
+class PlateRecognizerRemoteError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class PlateReaderResult:
     plate: str
@@ -136,12 +140,36 @@ def _read_with_plate_recognizer(file_bytes: bytes) -> PlateReaderResult | None:
         )
         response.raise_for_status()
         payload = response.json()
+    except requests.HTTPError as exc:
+        detail = None
+        response = exc.response
+        if response is not None:
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict):
+                detail = payload.get("detail") or payload.get("error")
+            if detail is None:
+                body_text = response.text.strip()
+                if body_text:
+                    detail = body_text[:240]
+            status_code = response.status_code
+        else:
+            status_code = "sem resposta"
+        message = f"Plate Recognizer indisponivel no momento (status {status_code})"
+        if detail:
+            message = f"{message}: {detail}"
+        logger.warning("Plate Recognizer request failed: %s", message)
+        raise PlateRecognizerRemoteError(message) from exc
     except requests.RequestException as exc:
-        logger.warning("Plate Recognizer request failed, falling back to local OCR: %s", exc)
-        return None
+        message = f"Plate Recognizer indisponivel no momento: {exc}"
+        logger.warning("Plate Recognizer request failed: %s", message)
+        raise PlateRecognizerRemoteError(message) from exc
     except ValueError as exc:
-        logger.warning("Plate Recognizer returned invalid JSON, falling back to local OCR: %s", exc)
-        return None
+        message = f"Plate Recognizer retornou uma resposta invalida: {exc}"
+        logger.warning(message)
+        raise PlateRecognizerRemoteError(message) from exc
 
     results = payload.get("results")
     if not isinstance(results, list) or not results:
@@ -165,6 +193,14 @@ def _read_with_plate_recognizer(file_bytes: bytes) -> PlateReaderResult | None:
             f"{best_result.confidence:.2f}" if best_result.confidence is not None else "n/a",
         )
     return best_result
+
+
+def _local_runtime_available() -> bool:
+    try:
+        _load_runtime()
+    except PlateReaderUnavailableError:
+        return False
+    return True
 
 
 def _load_runtime():
@@ -527,9 +563,17 @@ def scan_plate_image(file_bytes: bytes) -> PlateReaderResult:
         raise PlateReaderNotFoundError("Envie uma imagem para leitura da placa")
 
     logger.info("Plate scan started with %s bytes", len(file_bytes))
-    api_result = _read_with_plate_recognizer(file_bytes)
+    remote_error: PlateRecognizerRemoteError | None = None
+    try:
+        api_result = _read_with_plate_recognizer(file_bytes)
+    except PlateRecognizerRemoteError as exc:
+        remote_error = exc
+        api_result = None
     if api_result is not None:
         return api_result
+
+    if settings.plate_recognizer_token and remote_error is not None and not _local_runtime_available():
+        raise PlateReaderUnavailableError(str(remote_error)) from remote_error
 
     image = _decode_image(file_bytes)
     _get_ocr()

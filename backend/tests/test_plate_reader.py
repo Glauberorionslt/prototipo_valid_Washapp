@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from app.models import Customer
 from app import plate_reader
-from app.plate_reader import PlateReaderNotFoundError, PlateReaderResult, PlateReaderUnavailableError
+from app.plate_reader import PlateReaderNotFoundError, PlateReaderResult, PlateReaderUnavailableError, PlateRecognizerRemoteError
 from app.plate_reader_quota import PLATE_READER_MONTHLY_POOL
 
 
@@ -176,6 +178,26 @@ def test_scan_plate_image_falls_back_to_local_ocr_when_api_returns_none(monkeypa
 
     assert result.plate == "ABC1234"
     assert result.raw_text == "ABC1234"
+
+
+def test_scan_plate_image_surfaces_remote_error_when_local_ocr_is_unavailable(monkeypatch):
+    monkeypatch.setattr(
+        "app.plate_reader.settings",
+        SimpleNamespace(plate_recognizer_token="configured-token"),
+    )
+    monkeypatch.setattr(
+        "app.plate_reader._read_with_plate_recognizer",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(PlateRecognizerRemoteError("Plate Recognizer indisponivel no momento (status 401): Invalid token")),
+    )
+    monkeypatch.setattr("app.plate_reader._local_runtime_available", lambda: False)
+
+    try:
+        plate_reader.scan_plate_image(b"fake-image")
+    except PlateReaderUnavailableError as exc:
+        assert "status 401" in str(exc)
+        assert "Invalid token" in str(exc)
+    else:
+        raise AssertionError("expected PlateReaderUnavailableError")
 
 
 def test_create_order_accepts_reserved_order_id(client, auth_headers):
